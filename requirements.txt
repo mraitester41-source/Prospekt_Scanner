@@ -8,3 +8,6 @@ Pillow>=10.0.0
 
 # Data Processing
 pandas>=2.0.0
+
+# Web Framework
+Flask>=3.0.0

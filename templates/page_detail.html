@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Seite {{ page_num }} - PENNY Prospekt Scanner{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="/">← Zurück zur Übersicht</a>
+</div>
+
+<div class="page-detail">
+    <h2>Seite {{ page_num }}</h2>
+
+    <div class="detail-layout">
+        <div class="image-column">
+            <div class="page-image-large">
+                <img src="/images/{{ image_file }}" alt="Seite {{ page_num }}">
+            </div>
+        </div>
+
+        <div class="products-column">
+            <h3>Gefundene Produkte ({{ products|length }})</h3>
+
+            {% if products %}
+            <div class="products-list">
+                {% for product in products %}
+                <div class="product-card">
+                    <h4>{{ product.name }}</h4>
+                    <div class="product-prices">
+                        <div class="price-item">
+                            <span class="price-label">Preis:</span>
+                            <span class="price-value">{{ product.preis }}</span>
+                        </div>
+                        {% if product.app_preis %}
+                        <div class="price-item app-price">
+                            <span class="price-label">App-Preis:</span>
+                            <span class="price-value">{{ product.app_preis }}</span>
+                        </div>
+                        {% endif %}
+                        {% if product.grundpreis %}
+                        <div class="price-item grundpreis">
+                            <span class="price-label">Grundpreis:</span>
+                            <span class="price-value">{{ product.grundpreis }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if product.scraped_at %}
+                    <div class="product-meta">
+                        Gescannt: {{ product.scraped_at[:19] }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <p>Keine Produkte auf dieser Seite gefunden.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

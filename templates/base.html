@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PENNY Prospekt Scanner{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🛒 PENNY Prospekt Scanner</h1>
+            <nav>
+                <a href="/">Übersicht</a>
+                <a href="/search">Suche</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 PENNY Prospekt Scanner | Powered by Perplexity AI</p>
+        </div>
+    </footer>
+</body>
+</html>

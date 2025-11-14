@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Suche - PENNY Prospekt Scanner{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="/">← Zurück zur Übersicht</a>
+</div>
+
+<div class="search-page">
+    <h2>Produktsuche</h2>
+
+    <form action="/search" method="get" class="search-form">
+        <input type="text" name="q" placeholder="Produktname suchen..." class="search-input" value="{{ query }}" autofocus>
+        <button type="submit" class="search-button">Suchen</button>
+    </form>
+
+    {% if query %}
+    <div class="search-results">
+        <h3>Suchergebnisse für "{{ query }}" ({{ products|length }})</h3>
+
+        {% if products %}
+        <div class="products-list">
+            {% for product in products %}
+            <div class="product-card">
+                <div class="product-header">
+                    <h4>{{ product.name }}</h4>
+                    <a href="/page/{{ product.seite }}" class="page-link">Seite {{ product.seite }}</a>
+                </div>
+                <div class="product-prices">
+                    <div class="price-item">
+                        <span class="price-label">Preis:</span>
+                        <span class="price-value">{{ product.preis }}</span>
+                    </div>
+                    {% if product.app_preis %}
+                    <div class="price-item app-price">
+                        <span class="price-label">App-Preis:</span>
+                        <span class="price-value">{{ product.app_preis }}</span>
+                    </div>
+                    {% endif %}
+                    {% if product.grundpreis %}
+                    <div class="price-item grundpreis">
+                        <span class="price-label">Grundpreis:</span>
+                        <span class="price-value">{{ product.grundpreis }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>Keine Produkte gefunden für "{{ query }}".</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

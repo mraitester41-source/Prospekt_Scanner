@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Übersicht - PENNY Prospekt Scanner{% endblock %}
+
+{% block content %}
+<div class="stats-section">
+    <h2>Statistiken</h2>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-number">{{ stats.total_products }}</div>
+            <div class="stat-label">Produkte</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ stats.total_pages }}</div>
+            <div class="stat-label">Seiten</div>
+        </div>
+    </div>
+</div>
+
+<div class="search-section">
+    <h2>Produktsuche</h2>
+    <form action="/search" method="get" class="search-form">
+        <input type="text" name="q" placeholder="Produktname suchen..." class="search-input">
+        <button type="submit" class="search-button">Suchen</button>
+    </form>
+</div>
+
+<div class="pages-section">
+    <h2>Prospekt-Seiten</h2>
+    <div class="pages-grid">
+        {% for page in pages %}
+        <a href="/page/{{ page.number }}" class="page-card">
+            <div class="page-image">
+                <img src="/images/{{ page.filename }}" alt="Seite {{ page.number }}" loading="lazy">
+            </div>
+            <div class="page-info">
+                <h3>Seite {{ page.number }}</h3>
+                <p>{{ page.product_count }} Produkte</p>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+{% if not pages %}
+<div class="empty-state">
+    <h2>Keine Seiten gefunden</h2>
+    <p>Führe zuerst <code>python penny_perplexity_only.py</code> aus, um Prospekt-Seiten zu scannen.</p>
+</div>
+{% endif %}
+{% endblock %}
