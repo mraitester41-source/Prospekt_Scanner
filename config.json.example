@@ -1,0 +1,6 @@
+{
+  "perplexity_api_key": "YOUR_API_KEY_HERE",
+  "model": "llama-3.1-sonar-huge-128k-online",
+  "db_path": "penny_perplexity.sqlite",
+  "csv_path": "penny_perplexity.csv"
+}
