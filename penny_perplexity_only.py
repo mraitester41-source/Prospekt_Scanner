@@ -28,6 +28,45 @@ CSV_PATH = config.get("csv_path", "penny_perplexity.csv")
 
 print("PENNY PERPLEXITY ONLY – Maximale Produktabdeckung")
 
+# === DATENBANK MIGRATION ===
+def migrate_database():
+    """Fügt fehlende Spalten zur bestehenden Datenbank hinzu"""
+    if not os.path.exists(DB_PATH):
+        return  # Neue DB, keine Migration nötig
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    try:
+        # Prüfe, ob angebote-Tabelle existiert
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='angebote'")
+        if not cursor.fetchone():
+            conn.close()
+            return
+
+        # Hole bestehende Spalten
+        cursor.execute("PRAGMA table_info(angebote)")
+        existing_columns = [row[1] for row in cursor.fetchall()]
+
+        # Füge fehlende Spalten hinzu
+        new_columns = {
+            'gueltig_von': 'TEXT',
+            'gueltig_bis': 'TEXT',
+            'gueltigkeitstext': 'TEXT'
+        }
+
+        for col_name, col_type in new_columns.items():
+            if col_name not in existing_columns:
+                print(f"  Migration: Füge Spalte '{col_name}' hinzu...")
+                cursor.execute(f"ALTER TABLE angebote ADD COLUMN {col_name} {col_type}")
+
+        conn.commit()
+        print("  ✓ Datenbank-Migration abgeschlossen")
+    except Exception as e:
+        print(f"  Fehler bei Migration: {e}")
+    finally:
+        conn.close()
+
 # === BILD LADEN ===
 def download_image(url, path):
     if not os.path.exists(path):
@@ -243,6 +282,12 @@ WICHTIG: Kein Code-Block, kein Markdown → NUR reines JSON
 
 # === START ===
 if __name__ == "__main__":
+    # Datenbank migrieren (Spalten hinzufügen falls nötig)
+    print("\n" + "="*60)
+    print("Datenbank-Check & Migration")
+    print("="*60)
+    migrate_database()
+
     print("\n" + "="*60)
     print("SCHRITT 1: Erste Seiten laden für Gültigkeitsextraktion")
     print("="*60)
