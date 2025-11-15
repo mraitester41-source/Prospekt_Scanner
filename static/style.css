@@ -147,8 +147,15 @@ main {
     margin-bottom: 2rem;
 }
 
-.search-section h2 {
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 1rem;
+}
+
+.search-section h2 {
+    margin: 0;
     color: var(--primary-color);
 }
 
@@ -446,6 +453,56 @@ main {
     background: #ccc;
     cursor: not-allowed;
     transform: none;
+}
+
+/* Delete Button */
+.delete-btn {
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.delete-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+.product-header-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.product-header-actions h4 {
+    flex: 1;
+    margin: 0;
+}
+
+/* Reset Button */
+.reset-btn {
+    padding: 0.5rem 1.5rem;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    white-space: nowrap;
+}
+
+.reset-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
 }
 
 /* Generation Status */

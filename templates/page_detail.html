@@ -24,7 +24,12 @@
             <div class="products-list">
                 {% for product in products %}
                 <div class="product-card">
-                    <h4>{{ product.name }}</h4>
+                    <div class="product-header-actions">
+                        <h4>{{ product.name }}</h4>
+                        <button class="delete-btn" onclick="deleteProduct({{ loop.index }}, '{{ product.name }}')">
+                            🗑️ Löschen
+                        </button>
+                    </div>
                     <div class="product-prices">
                         <div class="price-item">
                             <span class="price-label">Preis:</span>
@@ -126,6 +131,30 @@ async function generateImage(productIndex, productName) {
         statusDiv.className = 'generation-status status-error';
         btn.disabled = false;
         btn.textContent = '🎨 KI-Bild generieren';
+    }
+}
+
+async function deleteProduct(productIndex, productName) {
+    if (!confirm(`Möchtest du "${productName}" wirklich löschen?\n\nDies kann nicht rückgängig gemacht werden!`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/product/${productIndex}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('✓ Produkt erfolgreich gelöscht!');
+            // Seite neu laden
+            window.location.reload();
+        } else {
+            throw new Error(data.error || 'Unbekannter Fehler');
+        }
+    } catch (error) {
+        alert(`❌ Fehler beim Löschen: ${error.message}`);
     }
 }
 </script>

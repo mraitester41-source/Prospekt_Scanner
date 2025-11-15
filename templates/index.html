@@ -40,7 +40,12 @@
 </div>
 
 <div class="search-section">
-    <h2>Produktsuche</h2>
+    <div class="section-header">
+        <h2>Produktsuche</h2>
+        <button class="reset-btn" onclick="resetAllData()">
+            🗑️ Alle Daten löschen
+        </button>
+    </div>
     <form action="/search" method="get" class="search-form">
         <input type="text" name="q" placeholder="Produktname suchen..." class="search-input">
         <button type="submit" class="search-button">Suchen</button>
@@ -70,4 +75,52 @@
     <p>Führe zuerst <code>python penny_perplexity_only.py</code> aus, um Prospekt-Seiten zu scannen.</p>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function resetAllData() {
+    const confirmation = confirm(
+        '⚠️ ACHTUNG: ALLE DATEN LÖSCHEN ⚠️\n\n' +
+        'Dies wird löschen:\n' +
+        '• Alle Produkte aus der Datenbank\n' +
+        '• Alle generierten Bilder\n' +
+        '• Alle Prospekt-Bilder\n' +
+        '• Gültigkeitsinformationen\n\n' +
+        'Dieser Vorgang kann NICHT rückgängig gemacht werden!\n\n' +
+        'Möchtest du wirklich fortfahren?'
+    );
+
+    if (!confirmation) {
+        return;
+    }
+
+    // Zweite Bestätigung
+    const secondConfirmation = confirm(
+        'Bist du dir ABSOLUT SICHER?\n\nAlle Daten werden unwiderruflich gelöscht!'
+    );
+
+    if (!secondConfirmation) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/reset-all', {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('✓ Alle Daten wurden erfolgreich gelöscht!');
+            // Seite neu laden
+            window.location.reload();
+        } else {
+            throw new Error(data.error || 'Unbekannter Fehler');
+        }
+    } catch (error) {
+        alert(`❌ Fehler beim Löschen: ${error.message}`);
+    }
+}
+</script>
 {% endblock %}

@@ -336,6 +336,69 @@ def get_generated_images(product_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/product/<int:product_id>', methods=['DELETE'])
+def delete_product(product_id):
+    """Löscht ein einzelnes Produkt"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Produkt löschen
+        cursor.execute("DELETE FROM angebote WHERE rowid = ?", (product_id,))
+
+        # Generierte Bilder für dieses Produkt löschen
+        cursor.execute("SELECT filename FROM generated_images WHERE product_id = ?", (product_id,))
+        images = cursor.fetchall()
+
+        for img in images:
+            img_path = GENERATED_IMAGES_DIR / img['filename']
+            if img_path.exists():
+                img_path.unlink()
+
+        cursor.execute("DELETE FROM generated_images WHERE product_id = ?", (product_id,))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'message': 'Produkt gelöscht'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/reset-all', methods=['POST'])
+def reset_all():
+    """Löscht ALLE Daten (Datenbank + Bilder)"""
+    try:
+        import shutil
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Alle Tabellen leeren
+        cursor.execute("DELETE FROM angebote")
+        cursor.execute("DELETE FROM generated_images")
+
+        try:
+            cursor.execute("DELETE FROM prospekt_info")
+        except:
+            pass  # Tabelle existiert ggf. noch nicht
+
+        conn.commit()
+        conn.close()
+
+        # Generierte Bilder löschen
+        if GENERATED_IMAGES_DIR.exists():
+            for file in GENERATED_IMAGES_DIR.glob('*'):
+                if file.is_file():
+                    file.unlink()
+
+        # Optional: Prospekt-Bilder löschen
+        for file in IMAGES_DIR.glob('bk_*.jpg'):
+            file.unlink()
+
+        return jsonify({'success': True, 'message': 'Alle Daten wurden gelöscht'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     print("=" * 60)
     print("PENNY PROSPEKT SCANNER - WEB INTERFACE")
