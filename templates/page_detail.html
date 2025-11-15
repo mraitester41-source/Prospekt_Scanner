@@ -26,7 +26,7 @@
                 <div class="product-card">
                     <div class="product-header-actions">
                         <h4>{{ product.name }}</h4>
-                        <button class="delete-btn" onclick="deleteProduct({{ loop.index }}, '{{ product.name }}')">
+                        <button class="delete-btn" onclick="deleteProduct({{ product.rowid }}, '{{ product.name }}')">
                             🗑️ Löschen
                         </button>
                     </div>
@@ -52,11 +52,11 @@
                     <div class="image-description">
                         <h5>🖼️ Produktbild-Beschreibung</h5>
                         <p>{{ product.bild_beschreibung }}</p>
-                        <button class="generate-btn" onclick="generateImage({{ loop.index }}, '{{ product.name }}')">
+                        <button class="generate-btn" onclick="generateImage({{ product.rowid }}, '{{ product.name }}')">
                             🎨 KI-Bild generieren
                         </button>
-                        <div id="generated-{{ loop.index }}" class="generated-images"></div>
-                        <div id="status-{{ loop.index }}" class="generation-status"></div>
+                        <div id="generated-{{ product.rowid }}" class="generated-images"></div>
+                        <div id="status-{{ product.rowid }}" class="generation-status"></div>
                     </div>
                     {% endif %}
                     <div class="product-meta">

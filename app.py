@@ -140,7 +140,7 @@ def page_detail(page_num):
         try:
             conn = get_db_connection()
             cursor = conn.execute(
-                "SELECT * FROM angebote WHERE seite = ? ORDER BY rowid",
+                "SELECT rowid, * FROM angebote WHERE seite = ? ORDER BY rowid",
                 (page_num,)
             )
             products = [dict(row) for row in cursor.fetchall()]
@@ -167,7 +167,7 @@ def search():
         try:
             conn = get_db_connection()
             cursor = conn.execute(
-                "SELECT * FROM angebote WHERE name LIKE ? ORDER BY seite, rowid",
+                "SELECT rowid, * FROM angebote WHERE name LIKE ? ORDER BY seite, rowid",
                 (f'%{query}%',)
             )
             products = [dict(row) for row in cursor.fetchall()]
