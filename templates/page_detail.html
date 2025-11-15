@@ -47,6 +47,11 @@
                     <div class="image-description">
                         <h5>🖼️ Produktbild-Beschreibung</h5>
                         <p>{{ product.bild_beschreibung }}</p>
+                        <button class="generate-btn" onclick="generateImage({{ loop.index }}, '{{ product.name }}')">
+                            🎨 KI-Bild generieren
+                        </button>
+                        <div id="generated-{{ loop.index }}" class="generated-images"></div>
+                        <div id="status-{{ loop.index }}" class="generation-status"></div>
                     </div>
                     {% endif %}
                     <div class="product-meta">
@@ -78,4 +83,50 @@
         </div>
     </div>
 </div>
+
+<script>
+async function generateImage(productIndex, productName) {
+    const statusDiv = document.getElementById(`status-${productIndex}`);
+    const generatedDiv = document.getElementById(`generated-${productIndex}`);
+    const btn = event.target;
+
+    // Button deaktivieren
+    btn.disabled = true;
+    btn.textContent = '⏳ Generiere...';
+    statusDiv.textContent = 'Bild wird generiert, bitte warten (ca. 10-30 Sekunden)...';
+    statusDiv.className = 'generation-status status-loading';
+
+    try {
+        const response = await fetch(`/api/generate-image/${productIndex}`, {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            statusDiv.textContent = '✓ Bild erfolgreich generiert!';
+            statusDiv.className = 'generation-status status-success';
+
+            // Bild anzeigen
+            const img = document.createElement('img');
+            img.src = data.url;
+            img.alt = `Generiertes Bild für ${productName}`;
+            img.className = 'generated-image';
+            generatedDiv.innerHTML = '';
+            generatedDiv.appendChild(img);
+
+            // Button wieder aktivieren
+            btn.disabled = false;
+            btn.textContent = '🎨 Neues Bild generieren';
+        } else {
+            throw new Error(data.error || 'Unbekannter Fehler');
+        }
+    } catch (error) {
+        statusDiv.textContent = `❌ Fehler: ${error.message}`;
+        statusDiv.className = 'generation-status status-error';
+        btn.disabled = false;
+        btn.textContent = '🎨 KI-Bild generieren';
+    }
+}
+</script>
 {% endblock %}

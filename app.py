@@ -1,11 +1,14 @@
 # app.py
 # Flask Web-App zur Anzeige von gescannten Prospekt-Seiten und Produkten
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_file
 import sqlite3
 import json
 import os
 from pathlib import Path
+import replicate
+import requests
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -18,6 +21,11 @@ except FileNotFoundError:
 
 DB_PATH = config.get("db_path", "penny_perplexity.sqlite")
 IMAGES_DIR = Path(".")
+GENERATED_IMAGES_DIR = Path("generated_images")
+REPLICATE_API_TOKEN = config.get("replicate_api_token", "")
+
+# Erstelle Ordner für generierte Bilder
+GENERATED_IMAGES_DIR.mkdir(exist_ok=True)
 
 def get_db_connection():
     """Verbindung zur SQLite-Datenbank herstellen"""
@@ -214,11 +222,119 @@ def api_stats():
 @app.route('/images/<filename>')
 def serve_image(filename):
     """Bilder bereitstellen"""
-    from flask import send_file
     image_path = IMAGES_DIR / filename
     if image_path.exists():
         return send_file(image_path, mimetype='image/jpeg')
     return "Bild nicht gefunden", 404
+
+@app.route('/generated/<filename>')
+def serve_generated_image(filename):
+    """Generierte Bilder bereitstellen"""
+    image_path = GENERATED_IMAGES_DIR / filename
+    if image_path.exists():
+        return send_file(image_path, mimetype='image/png')
+    return "Generiertes Bild nicht gefunden", 404
+
+@app.route('/api/generate-image/<int:product_id>', methods=['POST'])
+def generate_image(product_id):
+    """Generiert ein Produktbild mit Replicate/Stable Diffusion"""
+    if not REPLICATE_API_TOKEN:
+        return jsonify({'error': 'Replicate API Token nicht konfiguriert'}), 400
+
+    try:
+        # Produkt aus Datenbank laden
+        conn = get_db_connection()
+        cursor = conn.execute("SELECT * FROM angebote WHERE rowid = ?", (product_id,))
+        product = cursor.fetchone()
+        conn.close()
+
+        if not product:
+            return jsonify({'error': 'Produkt nicht gefunden'}), 404
+
+        description = product['bild_beschreibung']
+        if not description:
+            return jsonify({'error': 'Keine Bildbeschreibung vorhanden'}), 400
+
+        # Prompt für Stable Diffusion optimieren
+        prompt = f"Professional product photography: {description}. High quality, studio lighting, commercial photography, sharp focus, detailed."
+
+        # Bild mit Replicate generieren (SDXL)
+        os.environ["REPLICATE_API_TOKEN"] = REPLICATE_API_TOKEN
+        output = replicate.run(
+            "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+            input={
+                "prompt": prompt,
+                "width": 1024,
+                "height": 1024,
+                "num_outputs": 1,
+                "guidance_scale": 7.5,
+                "num_inference_steps": 50
+            }
+        )
+
+        # Bild herunterladen und speichern
+        image_url = output[0]
+        response = requests.get(image_url)
+        response.raise_for_status()
+
+        # Dateiname generieren
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"product_{product_id}_{timestamp}.png"
+        filepath = GENERATED_IMAGES_DIR / filename
+
+        # Bild speichern
+        with open(filepath, 'wb') as f:
+            f.write(response.content)
+
+        # In Datenbank vermerken
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Tabelle für generierte Bilder erstellen falls nicht vorhanden
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS generated_images (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                product_id INTEGER,
+                filename TEXT,
+                prompt TEXT,
+                created_at TEXT,
+                FOREIGN KEY (product_id) REFERENCES angebote(rowid)
+            )
+        ''')
+
+        cursor.execute('''
+            INSERT INTO generated_images (product_id, filename, prompt, created_at)
+            VALUES (?, ?, ?, ?)
+        ''', (product_id, filename, prompt, datetime.now().isoformat()))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'filename': filename,
+            'url': f'/generated/{filename}'
+        })
+
+    except Exception as e:
+        print(f"Fehler bei Bildgenerierung: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/product/<int:product_id>/generated-images')
+def get_generated_images(product_id):
+    """Ruft alle generierten Bilder für ein Produkt ab"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.execute(
+            "SELECT * FROM generated_images WHERE product_id = ? ORDER BY created_at DESC",
+            (product_id,)
+        )
+        images = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+
+        return jsonify({'images': images})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     print("=" * 60)

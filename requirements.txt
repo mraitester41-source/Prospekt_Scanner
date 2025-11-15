@@ -11,3 +11,6 @@ pandas>=2.0.0
 
 # Web Framework
 Flask>=3.0.0
+
+# AI Image Generation
+replicate>=0.25.0

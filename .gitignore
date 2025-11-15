@@ -11,6 +11,9 @@ config.json
 # Downloaded Images
 bk_*.jpg
 
+# Generated Images
+generated_images/
+
 # Python
 __pycache__/
 *.py[cod]
