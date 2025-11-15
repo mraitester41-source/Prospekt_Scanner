@@ -140,9 +140,111 @@ def process_page(page_num):
     
     save_results(products)
 
+# === GÜLTIGKEIT EXTRAHIEREN ===
+def extract_validity():
+    """Extrahiert Prospekt-Gültigkeit aus den ersten Seiten"""
+    pages_to_check = [1, 18, 2, 3]
+
+    for page_num in pages_to_check:
+        image_path = f"bk_{page_num}.jpg"
+        if not os.path.exists(image_path):
+            continue
+
+        try:
+            pil_image = Image.open(image_path).convert("RGB")
+            w, h = pil_image.size
+            buffer = io.BytesIO()
+            pil_image.save(buffer, format='JPEG', quality=95)
+            b64 = base64.b64encode(buffer.getvalue()).decode()
+
+            prompt = f"""
+Analysiere diese PENNY-Prospekt-Seite ({w}x{h} Pixel).
+
+Finde die Gültigkeitsinformationen des Prospekts (meist oben auf der Seite):
+- "Gültig von ... bis ..."
+- "Angebote gültig vom ... - ..."
+
+Gib NUR ein JSON zurück:
+{{"gueltig_von": "DD.MM.YYYY", "gueltig_bis": "DD.MM.YYYY", "text": "vollständiger Text"}}
+
+Falls keine Gültigkeit gefunden: {{"gueltig_von": "", "gueltig_bis": "", "text": ""}}
+WICHTIG: Kein Code-Block, kein Markdown → NUR reines JSON
+"""
+
+            payload = {
+                "model": MODEL,
+                "messages": [{"role": "user", "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                ]}],
+                "max_tokens": 300,
+                "temperature": 0.0
+            }
+
+            print(f"\n=== Prüfe Seite {page_num} für Gültigkeit ===")
+            r = requests.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers={"Authorization": f"Bearer {API_KEY}"},
+                json=payload,
+                timeout=60
+            )
+            r.raise_for_status()
+            raw = r.json()['choices'][0]['message']['content']
+
+            start = raw.find('{')
+            end = raw.rfind('}') + 1
+            if start != -1 and end != 0:
+                json_str = raw[start:end]
+                data = json.loads(json_str)
+
+                if data.get('text') and data['text'].strip():
+                    # In DB speichern
+                    conn = sqlite3.connect(DB_PATH)
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS prospekt_info (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            gueltig_von TEXT,
+                            gueltig_bis TEXT,
+                            gueltigkeitstext TEXT,
+                            extracted_at TEXT
+                        )
+                    ''')
+                    cursor.execute('DELETE FROM prospekt_info')
+                    cursor.execute('''
+                        INSERT INTO prospekt_info (gueltig_von, gueltig_bis, gueltigkeitstext, extracted_at)
+                        VALUES (?, ?, ?, ?)
+                    ''', (
+                        data.get('gueltig_von', ''),
+                        data.get('gueltig_bis', ''),
+                        data.get('text', ''),
+                        datetime.now().isoformat()
+                    ))
+                    conn.commit()
+                    conn.close()
+                    print(f"  ✓ Gültigkeit gefunden und gespeichert: {data.get('text', '')}")
+                    return data
+        except Exception as e:
+            print(f"  Fehler bei Seite {page_num}: {e}")
+            continue
+
+    print("  ⚠ Keine Gültigkeitsinformationen gefunden")
+    return None
+
 # === START ===
 if __name__ == "__main__":
-    for page in range(1, 41):
+    # Erst die ersten paar Seiten scannen, dann Gültigkeit extrahieren
+    for page in range(1, 5):
+        try:
+            process_page(page)
+        except Exception as e:
+            print(f"  ABBRUCH Seite {page}: {e}")
+
+    # Gültigkeit extrahieren (nachdem Seite 1 geladen ist)
+    extract_validity()
+
+    # Rest der Seiten scannen
+    for page in range(5, 41):
         try:
             process_page(page)
         except Exception as e:

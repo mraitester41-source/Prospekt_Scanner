@@ -12,6 +12,19 @@
 </div>
 {% endif %}
 
+{% if validity %}
+<div class="validity-banner">
+    <div class="validity-icon">📅</div>
+    <div class="validity-content">
+        <h3>Prospekt-Gültigkeit</h3>
+        <p class="validity-text">{{ validity.text }}</p>
+        {% if validity.von and validity.bis %}
+        <p class="validity-dates">Von {{ validity.von }} bis {{ validity.bis }}</p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
 <div class="stats-section">
     <h2>Statistiken</h2>
     <div class="stats-grid">

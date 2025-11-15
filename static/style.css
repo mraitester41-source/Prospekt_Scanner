@@ -60,6 +60,46 @@ header nav a:hover {
     padding: 0 1rem;
 }
 
+/* Validity Banner */
+.validity-banner {
+    background: linear-gradient(135deg, var(--primary-color), #c40511);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    box-shadow: 0 4px 6px rgba(227, 6, 19, 0.2);
+}
+
+.validity-icon {
+    font-size: 3rem;
+    flex-shrink: 0;
+}
+
+.validity-content {
+    flex: 1;
+}
+
+.validity-content h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.validity-text {
+    font-size: 1.1rem;
+    margin: 0;
+    font-weight: 500;
+}
+
+.validity-dates {
+    margin: 0.5rem 0 0 0;
+    font-size: 0.95rem;
+    opacity: 0.9;
+}
+
 /* Main Content */
 main {
     padding: 2rem 0;

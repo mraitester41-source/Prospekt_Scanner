@@ -59,6 +59,7 @@ def get_available_pages():
 def index():
     """Hauptseite: Übersicht aller Seiten"""
     pages = get_available_pages()
+    validity = None
 
     # Prüfe, ob Datenbank existiert
     if not table_exists():
@@ -68,11 +69,25 @@ def index():
         }
         for page in pages:
             page['product_count'] = 0
-        return render_template('index.html', pages=pages, stats=stats, no_database=True)
+        return render_template('index.html', pages=pages, stats=stats, validity=validity, no_database=True)
 
     # Anzahl Produkte pro Seite aus DB
     try:
         conn = get_db_connection()
+
+        # Gültigkeit laden
+        try:
+            cursor = conn.execute("SELECT * FROM prospekt_info ORDER BY id DESC LIMIT 1")
+            validity_row = cursor.fetchone()
+            if validity_row:
+                validity = {
+                    'von': validity_row['gueltig_von'],
+                    'bis': validity_row['gueltig_bis'],
+                    'text': validity_row['gueltigkeitstext']
+                }
+        except Exception:
+            validity = None
+
         for page in pages:
             cursor = conn.execute(
                 "SELECT COUNT(*) as count FROM angebote WHERE seite = ?",
@@ -80,10 +95,8 @@ def index():
             )
             result = cursor.fetchone()
             page['product_count'] = result['count'] if result else 0
-        conn.close()
 
         # Gesamtstatistiken
-        conn = get_db_connection()
         total_products = conn.execute("SELECT COUNT(*) as count FROM angebote").fetchone()
         total_pages = len(pages)
         conn.close()
@@ -101,7 +114,7 @@ def index():
         for page in pages:
             page['product_count'] = 0
 
-    return render_template('index.html', pages=pages, stats=stats)
+    return render_template('index.html', pages=pages, stats=stats, validity=validity)
 
 @app.route('/page/<page_num>')
 def page_detail(page_num):
