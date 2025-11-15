@@ -255,20 +255,18 @@ def generate_image(product_id):
         if not description:
             return jsonify({'error': 'Keine Bildbeschreibung vorhanden'}), 400
 
-        # Prompt für Stable Diffusion optimieren
-        prompt = f"Professional product photography: {description}. High quality, studio lighting, commercial photography, sharp focus, detailed."
+        # Prompt für Google Imagen 4 optimieren (für fotorealistische Produktbilder)
+        prompt = f"Professional product photography: {description}. High quality studio lighting, commercial photography, sharp focus, photorealistic, detailed textures."
 
-        # Bild mit Replicate generieren (SDXL)
+        # Bild mit Google Imagen 4 generieren
         os.environ["REPLICATE_API_TOKEN"] = REPLICATE_API_TOKEN
         output = replicate.run(
-            "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+            "google/imagen-4",
             input={
                 "prompt": prompt,
-                "width": 1024,
-                "height": 1024,
-                "num_outputs": 1,
-                "guidance_scale": 7.5,
-                "num_inference_steps": 50
+                "aspect_ratio": "1:1",
+                "output_format": "png",
+                "safety_filter_level": "block_only_high"
             }
         )
 
