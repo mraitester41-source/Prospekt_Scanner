@@ -45,6 +45,19 @@
                     </div>
                     {% endif %}
                 </div>
+                <div class="product-meta">
+                    {% if product.gueltigkeitstext %}
+                    <div class="validity-info">
+                        <span class="validity-icon-small">📅</span>
+                        <span>{{ product.gueltigkeitstext }}</span>
+                    </div>
+                    {% elif product.gueltig_von and product.gueltig_bis %}
+                    <div class="validity-info">
+                        <span class="validity-icon-small">📅</span>
+                        <span>Gültig von {{ product.gueltig_von }} bis {{ product.gueltig_bis }}</span>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
             {% endfor %}
         </div>

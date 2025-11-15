@@ -109,11 +109,21 @@ Bild: {os.path.basename(image_path)}
         return []
 
 # === SPEICHERN: DB + CSV ===
-def save_results(results):
+def save_results(results, validity_info=None):
     if not results:
         return
     df = pd.DataFrame(results)
     df['scraped_at'] = datetime.now().isoformat()
+
+    # Gültigkeit zu jedem Produkt hinzufügen
+    if validity_info:
+        df['gueltig_von'] = validity_info.get('gueltig_von', '')
+        df['gueltig_bis'] = validity_info.get('gueltig_bis', '')
+        df['gueltigkeitstext'] = validity_info.get('text', '')
+    else:
+        df['gueltig_von'] = ''
+        df['gueltig_bis'] = ''
+        df['gueltigkeitstext'] = ''
 
     conn = sqlite3.connect(DB_PATH)
     df.to_sql('angebote', conn, if_exists='append', index=False)
@@ -124,21 +134,21 @@ def save_results(results):
     print(f"  DB + CSV aktualisiert (+{len(df)})")
 
 # === HAUPTPROZESS ===
-def process_page(page_num):
+def process_page(page_num, validity_info=None):
     url = f"https://penny-publish.blaetterkatalog.de/frontend/mvc/api/catalogs/1178651/v1/normal/bk_{page_num}.jpg"
     path = f"bk_{page_num}.jpg"
-    
+
     print(f"\n=== Seite {page_num} ===")
     download_image(url, path)
-    
+
     products = get_products_perplexity(path)
     print(f"  Perplexity: {len(products)} Produkte erkannt")
 
     if products:
         for p in products[:3]:
             print(f"    → {p['name']} | {p['preis']} | {p['app_preis']} | {p['grundpreis']}")
-    
-    save_results(products)
+
+    save_results(products, validity_info)
 
 # === GÜLTIGKEIT EXTRAHIEREN ===
 def extract_validity():
@@ -233,19 +243,49 @@ WICHTIG: Kein Code-Block, kein Markdown → NUR reines JSON
 
 # === START ===
 if __name__ == "__main__":
-    # Erst die ersten paar Seiten scannen, dann Gültigkeit extrahieren
-    for page in range(1, 5):
+    print("\n" + "="*60)
+    print("SCHRITT 1: Erste Seiten laden für Gültigkeitsextraktion")
+    print("="*60)
+
+    # Erst die ersten paar Seiten herunterladen (ohne zu scannen)
+    for page in [1, 18, 2, 3]:
+        url = f"https://penny-publish.blaetterkatalog.de/frontend/mvc/api/catalogs/1178651/v1/normal/bk_{page}.jpg"
+        path = f"bk_{page}.jpg"
         try:
-            process_page(page)
+            download_image(url, path)
+        except Exception as e:
+            print(f"  Fehler beim Laden von Seite {page}: {e}")
+
+    print("\n" + "="*60)
+    print("SCHRITT 2: Gültigkeit extrahieren")
+    print("="*60)
+
+    # Gültigkeit extrahieren
+    validity_info = extract_validity()
+
+    if validity_info:
+        print("\n" + "="*60)
+        print(f"✓ GÜLTIGKEIT GEFUNDEN:")
+        print(f"  Von: {validity_info.get('gueltig_von', 'N/A')}")
+        print(f"  Bis: {validity_info.get('gueltig_bis', 'N/A')}")
+        print(f"  Text: {validity_info.get('text', 'N/A')}")
+        print("="*60 + "\n")
+    else:
+        print("\n⚠ Keine Gültigkeit gefunden - fahre ohne fort\n")
+
+    print("="*60)
+    print("SCHRITT 3: Alle Seiten scannen")
+    print("="*60)
+
+    # Alle Seiten scannen mit Gültigkeit
+    for page in range(1, 41):
+        try:
+            process_page(page, validity_info)
         except Exception as e:
             print(f"  ABBRUCH Seite {page}: {e}")
 
-    # Gültigkeit extrahieren (nachdem Seite 1 geladen ist)
-    extract_validity()
-
-    # Rest der Seiten scannen
-    for page in range(5, 41):
-        try:
-            process_page(page)
-        except Exception as e:
-            print(f"  ABBRUCH Seite {page}: {e}")
+    print("\n" + "="*60)
+    print("✓ SCAN ABGESCHLOSSEN")
+    if validity_info:
+        print(f"✓ Gültigkeit: {validity_info.get('text', 'N/A')}")
+    print("="*60)

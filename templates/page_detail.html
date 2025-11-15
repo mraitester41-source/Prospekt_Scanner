@@ -43,11 +43,24 @@
                         </div>
                         {% endif %}
                     </div>
-                    {% if product.scraped_at %}
                     <div class="product-meta">
-                        Gescannt: {{ product.scraped_at[:19] }}
+                        {% if product.gueltigkeitstext %}
+                        <div class="validity-info">
+                            <span class="validity-icon-small">📅</span>
+                            <span>{{ product.gueltigkeitstext }}</span>
+                        </div>
+                        {% elif product.gueltig_von and product.gueltig_bis %}
+                        <div class="validity-info">
+                            <span class="validity-icon-small">📅</span>
+                            <span>Gültig von {{ product.gueltig_von }} bis {{ product.gueltig_bis }}</span>
+                        </div>
+                        {% endif %}
+                        {% if product.scraped_at %}
+                        <div class="scraped-info">
+                            Gescannt: {{ product.scraped_at[:19] }}
+                        </div>
+                        {% endif %}
                     </div>
-                    {% endif %}
                 </div>
                 {% endfor %}
             </div>

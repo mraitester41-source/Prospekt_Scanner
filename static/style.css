@@ -379,6 +379,26 @@ main {
     color: var(--text-light);
 }
 
+.validity-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background-color: #fff3e0;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.validity-icon-small {
+    font-size: 1rem;
+}
+
+.scraped-info {
+    margin-top: 0.5rem;
+}
+
 /* Empty State */
 .empty-state {
     text-align: center;
