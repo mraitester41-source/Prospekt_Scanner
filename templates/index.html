@@ -3,6 +3,15 @@
 {% block title %}Übersicht - PENNY Prospekt Scanner{% endblock %}
 
 {% block content %}
+{% if no_database and stats.total_products == 0 %}
+<div class="empty-state" style="background-color: #fff3cd; border: 2px solid #ffc107; margin-bottom: 2rem;">
+    <h2>⚠️ Keine Produktdaten gefunden</h2>
+    <p>Die Datenbank wurde noch nicht erstellt. Führe zuerst das Scanner-Skript aus:</p>
+    <code style="display: block; margin: 1rem 0; padding: 1rem; background: #fff; border-radius: 4px;">python penny_perplexity_only.py</code>
+    <p style="margin-top: 1rem; color: #666;">Das Skript wird Prospekt-Seiten herunterladen, Produkte erkennen und die Datenbank erstellen.</p>
+</div>
+{% endif %}
+
 <div class="stats-section">
     <h2>Statistiken</h2>
     <div class="stats-grid">
