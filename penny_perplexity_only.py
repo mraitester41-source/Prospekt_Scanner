@@ -86,7 +86,7 @@ def get_products_perplexity(image_path):
     b64 = base64.b64encode(buffer.getvalue()).decode()
 
     prompt = f"""
-Du bist ein Supermarkt-Experte. Analysiere dieses PENNY-Prospekt ({w}x{h} Pixel).
+Du bist ein Experte für visuelle Produktbeschreibungen. Analysiere dieses PENNY-Prospekt ({w}x{h} Pixel).
 
 Finde **ALLE** Produkte – auch kleine, auch oben/unten.
 Für jedes Produkt:
@@ -94,13 +94,54 @@ Für jedes Produkt:
 - preis: Aktionspreis (z. B. "5,99 €")
 - app_preis: mit App (z. B. "3,49 €" oder leer)
 - grundpreis: 1 kg = ... (z. B. "1 kg = 7,99 €" oder leer)
-- bild_beschreibung: Detaillierte Beschreibung des Produktbildes für KI-Bildgenerierung (z. B. "Rote Verpackung mit weißem Logo, frisches Hackfleisch sichtbar, 400g Packung, modernes Design")
+- bild_beschreibung: SEHR DETAILLIERTE Beschreibung für KI-Bildgenerierung (siehe Beispiele unten)
 - seite: Seitenzahl aus Dateinamen (z. B. "4")
 
-WICHTIG:
+WICHTIG für bild_beschreibung - Beschreibe ALLE visuellen Details:
+
+1. VERPACKUNG:
+   - Exakte Farben (Hauptfarbe, Akzentfarben, Farbverläufe)
+   - Material-Optik (glänzend, matt, transparent, Folie)
+   - Form und Größe der Verpackung
+   - Logo-Position, Schriftarten, Textelemente
+   - Muster, Illustrationen auf der Verpackung
+
+2. PRODUKT-DARSTELLUNG:
+   - Wenn MEHRERE Ansichten (z.B. roh UND gekocht):
+     * Beschreibe JEDE Ansicht separat
+     * Gib Position an (links/rechts, oben/unten)
+     * Größenverhältnis zwischen den Ansichten
+   - Farbe, Textur, Aussehen des Produkts
+   - Zustand (roh, gekocht, gebraten, garniert)
+   - Arrangement, Platzierung
+
+3. LAYOUT & KOMPOSITION:
+   - Wo befindet sich was im Bild (Vordergrund/Hintergrund)
+   - Größenverhältnisse
+   - Hintergrundfarbe oder -gestaltung
+   - Schatten, Lichteffekte
+
+4. ZUSÄTZLICHE ELEMENTE:
+   - Garnierung, Beilagen
+   - Dekorative Elemente
+   - Dampf, Frische-Indikatoren
+   - Qualitätssiegel, Badges
+
+BEISPIELE für gute Beschreibungen:
+
+Beispiel 1 (einfach):
+"Rechteckige Verpackung in kräftigem Rot mit weißem Markenlogo oben links. Transparentes Sichtfenster in der Mitte zeigt frisches, rosa-rotes Hackfleisch mit feiner Körnung. Gelbes Gewichts-Label '400g' unten rechts. Verpackung hat glänzende Folien-Optik. Weißer Hintergrund, leichter Schlagschatten unter der Verpackung."
+
+Beispiel 2 (mit mehreren Ansichten):
+"Zwei Produktdarstellungen: LINKS (60% der Bildfläche): Tiefgefrorenes Schnitzel in hellblauer Frostverpackung mit silbernem Schriftzug, liegt flach, eisige Kristalle sichtbar. RECHTS (40% der Bildfläche): Fertig gebratenes goldbraunes Schnitzel auf weißem Teller, knusprige Panade mit Luftblasen, dampfend, garniert mit Zitronenscheibe und Petersilie. Beide auf hellem Untergrund, leichte Überlappung in der Mitte. Warme Beleuchtung beim gebratenen Schnitzel, kühles Licht beim gefrorenen."
+
+Beispiel 3 (komplex):
+"Quadratische Premium-Verpackung, tiefes Bordeauxrot mit goldenen Verzierungen an den Ecken. Großes kreisförmiges Sichtfenster (Durchmesser ca. 40% der Vorderseite) zeigt drei Teilstücke Fleisch in sattem Dunkelrot mit weißer Marmorierung. Goldener Schriftzug 'Premium Selection' in verschnörkelter Schrift oben mittig. Kleine grüne Rosmarin-Illustration unten links. Verpackung steht leicht schräg (15° gedreht), wodurch auch die rechte Seite sichtbar ist. Hintergrund: dunkler Holztisch mit sichtbarer Maserung. Weiches Studiolicht von links oben, erzeugt Glanzpunkte auf der Folie."
+
 - Ignoriere Werbung, Logos, Überschriften
 - Nur echte Produkte mit Preis
-- Bildbeschreibung sollte präzise und detailliert sein (Farben, Verpackung, Form, Größe)
+- Beschreibung MUSS mindestens 100 Wörter haben
+- Je mehr Details, desto besser für KI-Bildgenerierung
 - Kein Code-Block, kein Markdown → NUR reines JSON
 - Format: {{"products": [{{ "name": "...", "preis": "...", "app_preis": "...", "grundpreis": "...", "bild_beschreibung": "...", "seite": "..." }}]}}
 
@@ -113,7 +154,7 @@ Bild: {os.path.basename(image_path)}
             {"type": "text", "text": prompt},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
         ]}],
-        "max_tokens": 3000,
+        "max_tokens": 6000,  # Erhöht für ausführliche Bildbeschreibungen
         "temperature": 0.0
     }
 
@@ -189,10 +230,11 @@ def process_page(page_num, validity_info=None):
     if products:
         for p in products[:3]:
             desc = p.get('bild_beschreibung', '')
-            desc_preview = desc[:50] + "..." if len(desc) > 50 else desc
+            desc_preview = desc[:150] + "..." if len(desc) > 150 else desc
             print(f"    → {p['name']} | {p['preis']}")
             if desc:
                 print(f"      🖼️ {desc_preview}")
+                print(f"      📏 Länge: {len(desc)} Zeichen")
 
     save_results(products, validity_info)
 
