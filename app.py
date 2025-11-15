@@ -42,7 +42,7 @@ def table_exists():
 
 def get_available_pages():
     """Liste aller vorhandenen Prospekt-Seiten"""
-    image_files = sorted(IMAGES_DIR.glob("bk_*.jpg"))
+    image_files = list(IMAGES_DIR.glob("bk_*.jpg"))
     pages = []
     for img in image_files:
         page_num = img.stem.split('_')[1]
@@ -51,6 +51,8 @@ def get_available_pages():
             'filename': img.name,
             'path': str(img)
         })
+    # Sortiere nach numerischer Seitenzahl statt String
+    pages.sort(key=lambda x: int(x['number']))
     return pages
 
 @app.route('/')
