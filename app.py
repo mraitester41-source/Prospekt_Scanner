@@ -144,6 +144,18 @@ def page_detail(page_num):
                 (page_num,)
             )
             products = [dict(row) for row in cursor.fetchall()]
+
+            # Generierte Bilder für jedes Produkt laden
+            for product in products:
+                try:
+                    img_cursor = conn.execute(
+                        "SELECT filename, created_at FROM generated_images WHERE product_id = ? ORDER BY created_at DESC",
+                        (product['rowid'],)
+                    )
+                    product['generated_images'] = [dict(img) for img in img_cursor.fetchall()]
+                except:
+                    product['generated_images'] = []
+
             conn.close()
         except Exception as e:
             print(f"Datenbankfehler: {e}")

@@ -532,13 +532,32 @@ main {
 /* Generated Images */
 .generated-images {
     margin-top: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.generated-image-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .generated-image {
     width: 100%;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    margin-top: 1rem;
+    transition: transform 0.3s;
+}
+
+.generated-image:hover {
+    transform: scale(1.05);
+}
+
+.generated-image-item small {
+    color: var(--text-light);
+    font-size: 0.8rem;
+    text-align: center;
 }
 
 /* Empty State */

@@ -55,7 +55,16 @@
                         <button class="generate-btn" onclick="generateImage({{ product.rowid }}, '{{ product.name }}')">
                             🎨 KI-Bild generieren
                         </button>
-                        <div id="generated-{{ product.rowid }}" class="generated-images"></div>
+                        <div id="generated-{{ product.rowid }}" class="generated-images">
+                            {% if product.generated_images %}
+                                {% for gen_img in product.generated_images %}
+                                <div class="generated-image-item">
+                                    <img src="/generated/{{ gen_img.filename }}" alt="Generiertes Bild für {{ product.name }}" class="generated-image">
+                                    <small>{{ gen_img.created_at[:19] }}</small>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
                         <div id="status-{{ product.rowid }}" class="generation-status"></div>
                     </div>
                     {% endif %}
@@ -112,13 +121,23 @@ async function generateImage(productIndex, productName) {
             statusDiv.textContent = '✓ Bild erfolgreich generiert!';
             statusDiv.className = 'generation-status status-success';
 
-            // Bild anzeigen
+            // Neues Bild am Anfang hinzufügen
+            const imageItem = document.createElement('div');
+            imageItem.className = 'generated-image-item';
+
             const img = document.createElement('img');
             img.src = data.url;
             img.alt = `Generiertes Bild für ${productName}`;
             img.className = 'generated-image';
-            generatedDiv.innerHTML = '';
-            generatedDiv.appendChild(img);
+
+            const timestamp = document.createElement('small');
+            timestamp.textContent = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+            imageItem.appendChild(img);
+            imageItem.appendChild(timestamp);
+
+            // Am Anfang einfügen
+            generatedDiv.insertBefore(imageItem, generatedDiv.firstChild);
 
             // Button wieder aktivieren
             btn.disabled = false;
