@@ -346,16 +346,20 @@ def delete_product(product_id):
         # Produkt löschen
         cursor.execute("DELETE FROM angebote WHERE rowid = ?", (product_id,))
 
-        # Generierte Bilder für dieses Produkt löschen
-        cursor.execute("SELECT filename FROM generated_images WHERE product_id = ?", (product_id,))
-        images = cursor.fetchall()
+        # Generierte Bilder für dieses Produkt löschen (falls Tabelle existiert)
+        try:
+            cursor.execute("SELECT filename FROM generated_images WHERE product_id = ?", (product_id,))
+            images = cursor.fetchall()
 
-        for img in images:
-            img_path = GENERATED_IMAGES_DIR / img['filename']
-            if img_path.exists():
-                img_path.unlink()
+            for img in images:
+                img_path = GENERATED_IMAGES_DIR / img['filename']
+                if img_path.exists():
+                    img_path.unlink()
 
-        cursor.execute("DELETE FROM generated_images WHERE product_id = ?", (product_id,))
+            cursor.execute("DELETE FROM generated_images WHERE product_id = ?", (product_id,))
+        except sqlite3.OperationalError:
+            # Tabelle existiert noch nicht bei älteren Produkten
+            pass
 
         conn.commit()
         conn.close()
@@ -375,7 +379,11 @@ def reset_all():
 
         # Alle Tabellen leeren
         cursor.execute("DELETE FROM angebote")
-        cursor.execute("DELETE FROM generated_images")
+
+        try:
+            cursor.execute("DELETE FROM generated_images")
+        except:
+            pass  # Tabelle existiert ggf. noch nicht
 
         try:
             cursor.execute("DELETE FROM prospekt_info")
