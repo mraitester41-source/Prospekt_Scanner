@@ -52,7 +52,8 @@ def migrate_database():
         new_columns = {
             'gueltig_von': 'TEXT',
             'gueltig_bis': 'TEXT',
-            'gueltigkeitstext': 'TEXT'
+            'gueltigkeitstext': 'TEXT',
+            'bild_beschreibung': 'TEXT'
         }
 
         for col_name, col_type in new_columns.items():
@@ -93,13 +94,15 @@ Für jedes Produkt:
 - preis: Aktionspreis (z. B. "5,99 €")
 - app_preis: mit App (z. B. "3,49 €" oder leer)
 - grundpreis: 1 kg = ... (z. B. "1 kg = 7,99 €" oder leer)
+- bild_beschreibung: Detaillierte Beschreibung des Produktbildes für KI-Bildgenerierung (z. B. "Rote Verpackung mit weißem Logo, frisches Hackfleisch sichtbar, 400g Packung, modernes Design")
 - seite: Seitenzahl aus Dateinamen (z. B. "4")
 
 WICHTIG:
 - Ignoriere Werbung, Logos, Überschriften
 - Nur echte Produkte mit Preis
+- Bildbeschreibung sollte präzise und detailliert sein (Farben, Verpackung, Form, Größe)
 - Kein Code-Block, kein Markdown → NUR reines JSON
-- Format: {{"products": [{{ "name": "...", "preis": "...", "app_preis": "...", "grundpreis": "...", "seite": "..." }}]}}
+- Format: {{"products": [{{ "name": "...", "preis": "...", "app_preis": "...", "grundpreis": "...", "bild_beschreibung": "...", "seite": "..." }}]}}
 
 Bild: {os.path.basename(image_path)}
 """
@@ -185,7 +188,11 @@ def process_page(page_num, validity_info=None):
 
     if products:
         for p in products[:3]:
-            print(f"    → {p['name']} | {p['preis']} | {p['app_preis']} | {p['grundpreis']}")
+            desc = p.get('bild_beschreibung', '')
+            desc_preview = desc[:50] + "..." if len(desc) > 50 else desc
+            print(f"    → {p['name']} | {p['preis']}")
+            if desc:
+                print(f"      🖼️ {desc_preview}")
 
     save_results(products, validity_info)
 

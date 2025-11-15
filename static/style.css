@@ -399,6 +399,29 @@ main {
     margin-top: 0.5rem;
 }
 
+.image-description {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+    border-radius: 6px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.image-description h5 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.95rem;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.image-description p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-dark);
+    line-height: 1.5;
+    font-style: italic;
+}
+
 /* Empty State */
 .empty-state {
     text-align: center;

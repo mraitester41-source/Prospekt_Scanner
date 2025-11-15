@@ -43,6 +43,12 @@
                         </div>
                         {% endif %}
                     </div>
+                    {% if product.bild_beschreibung %}
+                    <div class="image-description">
+                        <h5>🖼️ Produktbild-Beschreibung</h5>
+                        <p>{{ product.bild_beschreibung }}</p>
+                    </div>
+                    {% endif %}
                     <div class="product-meta">
                         {% if product.gueltigkeitstext %}
                         <div class="validity-info">
