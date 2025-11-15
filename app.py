@@ -270,8 +270,8 @@ def generate_image(product_id):
             }
         )
 
-        # Bild herunterladen und speichern
-        image_url = output[0]
+        # Bild herunterladen und speichern (Imagen 4 gibt direkt eine URL zurück)
+        image_url = str(output) if hasattr(output, '__str__') else output
         response = requests.get(image_url)
         response.raise_for_status()
 
