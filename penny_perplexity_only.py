@@ -12,6 +12,7 @@ import os
 import re
 import io
 from datetime import datetime
+from pathlib import Path
 
 # === CONFIG ===
 try:
@@ -28,9 +29,14 @@ CSV_PATH = config.get("csv_path", "penny_perplexity.csv")
 CATALOG_ID = config.get("catalog_id", 1178966)  # Default: newest catalog
 KETTE = config.get("kette", "PENNY")  # Default: PENNY
 
+# Verzeichnis für Bilder dieses Prospekts
+IMAGE_DIR = Path(f"{KETTE}/{CATALOG_ID}")
+IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+
 print("PENNY PERPLEXITY ONLY – Maximale Produktabdeckung")
 print(f"Kette: {KETTE}")
 print(f"Verwende Katalog-ID: {CATALOG_ID}")
+print(f"Bilder-Verzeichnis: {IMAGE_DIR}")
 
 # === DATENBANK MIGRATION ===
 def migrate_database():
@@ -347,12 +353,12 @@ def save_results(results, validity_info=None, prospekt_id=None):
 # === HAUPTPROZESS ===
 def process_page(page_num, validity_info=None, prospekt_id=None):
     url = f"https://penny-publish.blaetterkatalog.de/frontend/mvc/api/catalogs/{CATALOG_ID}/v1/normal/bk_{page_num}.jpg"
-    path = f"bk_{page_num}.jpg"
+    path = IMAGE_DIR / f"bk_{page_num}.jpg"
 
     print(f"\n=== Seite {page_num} ===")
-    download_image(url, path)
+    download_image(url, str(path))
 
-    products = get_products_perplexity(path)
+    products = get_products_perplexity(str(path))
     print(f"  Perplexity: {len(products)} Produkte erkannt")
 
     if products:
@@ -372,12 +378,12 @@ def extract_validity():
     pages_to_check = [1, 18, 2, 3]
 
     for page_num in pages_to_check:
-        image_path = f"bk_{page_num}.jpg"
-        if not os.path.exists(image_path):
+        image_path = IMAGE_DIR / f"bk_{page_num}.jpg"
+        if not image_path.exists():
             continue
 
         try:
-            pil_image = Image.open(image_path).convert("RGB")
+            pil_image = Image.open(str(image_path)).convert("RGB")
             w, h = pil_image.size
             buffer = io.BytesIO()
             pil_image.save(buffer, format='JPEG', quality=95)
@@ -472,9 +478,9 @@ if __name__ == "__main__":
     # Erst die ersten paar Seiten herunterladen (ohne zu scannen)
     for page in [1, 18, 2, 3]:
         url = f"https://penny-publish.blaetterkatalog.de/frontend/mvc/api/catalogs/{CATALOG_ID}/v1/normal/bk_{page}.jpg"
-        path = f"bk_{page}.jpg"
+        path = IMAGE_DIR / f"bk_{page}.jpg"
         try:
-            download_image(url, path)
+            download_image(url, str(path))
         except Exception as e:
             print(f"  Fehler beim Laden von Seite {page}: {e}")
 

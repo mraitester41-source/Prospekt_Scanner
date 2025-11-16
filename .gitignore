@@ -10,6 +10,13 @@ config.json
 
 # Downloaded Images
 bk_*.jpg
+# Prospekt-Verzeichnisse (Kette/Katalog-ID/)
+PENNY/
+ALDI/
+LIDL/
+REWE/
+EDEKA/
+NETTO/
 
 # Generated Images
 generated_images/

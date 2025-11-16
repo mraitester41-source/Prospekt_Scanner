@@ -67,7 +67,7 @@
         {% for page in pages %}
         <a href="/page/{{ page.number }}{% if prospekt_id %}?prospekt_id={{ prospekt_id }}{% endif %}" class="page-card">
             <div class="page-image">
-                <img src="/images/{{ page.filename }}" alt="Seite {{ page.number }}" loading="lazy">
+                <img src="/images/{{ page.image_path }}" alt="Seite {{ page.number }}" loading="lazy">
             </div>
             <div class="page-info">
                 <h3>Seite {{ page.number }}</h3>

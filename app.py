@@ -138,16 +138,29 @@ def parse_grundpreis(grundpreis_str):
 
     return None, None
 
-def get_available_pages():
-    """Liste aller vorhandenen Prospekt-Seiten"""
-    image_files = list(IMAGES_DIR.glob("bk_*.jpg"))
+def get_available_pages(prospekt=None):
+    """Liste aller vorhandenen Prospekt-Seiten
+
+    Args:
+        prospekt: Dict mit 'kette' und 'katalog_id' Feldern.
+                  Falls None, sucht im Root-Verzeichnis (Legacy)
+    """
+    if prospekt:
+        # Bilder aus Prospekt-Verzeichnis laden
+        prospekt_dir = Path(f"{prospekt['kette']}/{prospekt['katalog_id']}")
+        image_files = list(prospekt_dir.glob("bk_*.jpg")) if prospekt_dir.exists() else []
+    else:
+        # Legacy: Bilder aus Root-Verzeichnis
+        image_files = list(IMAGES_DIR.glob("bk_*.jpg"))
+
     pages = []
     for img in image_files:
         page_num = img.stem.split('_')[1]
         pages.append({
             'number': page_num,
             'filename': img.name,
-            'path': str(img)
+            'path': str(img),
+            'image_path': f"{prospekt['kette']}/{prospekt['katalog_id']}/{img.name}" if prospekt else img.name
         })
     # Sortiere nach numerischer Seitenzahl statt String
     pages.sort(key=lambda x: int(x['number']))
@@ -220,17 +233,9 @@ def index():
 @app.route('/prospekt/<int:prospekt_id>')
 def prospekt_detail(prospekt_id):
     """Seiten-Übersicht eines Prospekts"""
-    pages = get_available_pages()
-
     # Prüfe, ob Datenbank existiert
     if not table_exists():
-        stats = {
-            'total_products': 0,
-            'total_pages': len(pages)
-        }
-        for page in pages:
-            page['product_count'] = 0
-        return render_template('index.html', pages=pages, stats=stats, prospekt=None, no_database=True)
+        return render_template('index.html', pages=[], stats={'total_products': 0, 'total_pages': 0}, prospekt=None, no_database=True)
 
     # Anzahl Produkte pro Seite aus DB
     try:
@@ -240,6 +245,13 @@ def prospekt_detail(prospekt_id):
         cursor = conn.execute("SELECT * FROM prospekte WHERE id = ?", (prospekt_id,))
         prospekt_row = cursor.fetchone()
         prospekt = dict(prospekt_row) if prospekt_row else None
+
+        if not prospekt:
+            conn.close()
+            return "Prospekt nicht gefunden", 404
+
+        # Seiten für dieses Prospekt laden
+        pages = get_available_pages(prospekt)
 
         for page in pages:
             cursor = conn.execute(
@@ -276,19 +288,15 @@ def prospekt_detail(prospekt_id):
 @app.route('/page/<page_num>')
 def page_detail(page_num):
     """Detailansicht einer einzelnen Seite"""
-    # Bild-Info
-    image_file = f"bk_{page_num}.jpg"
-    image_path = IMAGES_DIR / image_file
-
-    if not image_path.exists():
-        return "Seite nicht gefunden", 404
-
     # Optional: Filter nach Prospekt
     prospekt_id = request.args.get('prospekt_id', type=int)
 
     # Produkte aus Datenbank
     products = []
     prospekt = None
+    image_file = f"bk_{page_num}.jpg"
+    image_path_for_template = image_file  # Legacy default
+
     if table_exists():
         try:
             conn = get_db_connection()
@@ -298,6 +306,21 @@ def page_detail(page_num):
                 cursor = conn.execute("SELECT * FROM prospekte WHERE id = ?", (prospekt_id,))
                 prospekt_row = cursor.fetchone()
                 prospekt = dict(prospekt_row) if prospekt_row else None
+
+                # Bild-Pfad für dieses Prospekt
+                if prospekt:
+                    image_path_for_template = f"{prospekt['kette']}/{prospekt['katalog_id']}/{image_file}"
+                    image_path = Path(f"{prospekt['kette']}/{prospekt['katalog_id']}/{image_file}")
+                else:
+                    image_path = IMAGES_DIR / image_file
+            else:
+                # Legacy: Root-Verzeichnis
+                image_path = IMAGES_DIR / image_file
+
+            # Prüfe ob Bild existiert
+            if not image_path.exists():
+                conn.close()
+                return "Seite nicht gefunden", 404
 
             # Query anpassen je nach Filter
             if prospekt_id:
@@ -361,7 +384,7 @@ def page_detail(page_num):
 
     return render_template('page_detail.html',
                           page_num=page_num,
-                          image_file=image_file,
+                          image_file=image_path_for_template,
                           products=products,
                           prospekt=prospekt,
                           prospekt_id=prospekt_id)
@@ -512,12 +535,19 @@ def api_stats():
             'per_page': []
         })
 
-@app.route('/images/<filename>')
-def serve_image(filename):
-    """Bilder bereitstellen"""
-    image_path = IMAGES_DIR / filename
+@app.route('/images/<path:filepath>')
+def serve_image(filepath):
+    """Bilder bereitstellen (unterstützt verschachtelte Pfade wie kette/katalog_id/bk_1.jpg)"""
+    # Versuche zuerst mit verschachteltem Pfad
+    image_path = Path(filepath)
     if image_path.exists():
         return send_file(image_path, mimetype='image/jpeg')
+
+    # Fallback: Legacy Root-Verzeichnis
+    image_path = IMAGES_DIR / filepath
+    if image_path.exists():
+        return send_file(image_path, mimetype='image/jpeg')
+
     return "Bild nicht gefunden", 404
 
 @app.route('/generated/<filename>')
