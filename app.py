@@ -171,29 +171,47 @@ def page_detail(page_num):
             )
             products = [dict(row) for row in cursor.fetchall()]
 
-            # Generierte Bilder für jedes Produkt laden
-            for product in products:
+            if products:
+                # Alle generierten Bilder für diese Seite auf einmal laden
+                product_ids = [p['rowid'] for p in products]
+                placeholders = ','.join('?' * len(product_ids))
+
+                images_by_product = {}
                 try:
                     img_cursor = conn.execute(
-                        "SELECT filename, created_at FROM generated_images WHERE product_id = ? ORDER BY created_at DESC",
-                        (product['rowid'],)
+                        f"SELECT product_id, filename, created_at FROM generated_images WHERE product_id IN ({placeholders}) ORDER BY created_at DESC",
+                        product_ids
                     )
-                    product['generated_images'] = [dict(img) for img in img_cursor.fetchall()]
+                    for img in img_cursor.fetchall():
+                        pid = img['product_id']
+                        if pid not in images_by_product:
+                            images_by_product[pid] = []
+                        images_by_product[pid].append(dict(img))
                 except:
-                    product['generated_images'] = []
+                    pass
 
-                # Kategorien für jedes Produkt laden
+                # Alle Kategorien für diese Seite auf einmal laden
+                categories_by_product = {}
                 try:
-                    cat_cursor = conn.execute("""
-                        SELECT c.name, c.level
+                    cat_cursor = conn.execute(f"""
+                        SELECT pc.product_id, c.name, c.level
                         FROM categories c
                         JOIN product_categories pc ON c.id = pc.category_id
-                        WHERE pc.product_id = ?
+                        WHERE pc.product_id IN ({placeholders})
                         ORDER BY c.level
-                    """, (product['rowid'],))
-                    product['categories'] = [dict(cat) for cat in cat_cursor.fetchall()]
+                    """, product_ids)
+                    for cat in cat_cursor.fetchall():
+                        pid = cat['product_id']
+                        if pid not in categories_by_product:
+                            categories_by_product[pid] = []
+                        categories_by_product[pid].append({'name': cat['name'], 'level': cat['level']})
                 except:
-                    product['categories'] = []
+                    pass
+
+                # Bilder und Kategorien zu Produkten hinzufügen
+                for product in products:
+                    product['generated_images'] = images_by_product.get(product['rowid'], [])
+                    product['categories'] = categories_by_product.get(product['rowid'], [])
 
             conn.close()
         except Exception as e:
