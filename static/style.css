@@ -387,6 +387,43 @@ main {
     font-size: 0.9rem;
 }
 
+/* Product Categories */
+.product-categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: var(--bg-light);
+    border-radius: 6px;
+}
+
+.category-label {
+    font-size: 1.1rem;
+}
+
+.category-tag {
+    padding: 0.3rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+}
+
+.category-tag.level-1 {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.category-tag.level-2 {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+.category-tag.level-3 {
+    background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+}
+
 .product-meta {
     margin-top: 1rem;
     font-size: 0.85rem;

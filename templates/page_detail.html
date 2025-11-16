@@ -73,6 +73,14 @@
                         <div id="status-{{ product.rowid }}" class="generation-status"></div>
                     </div>
                     {% endif %}
+                    {% if product.categories %}
+                    <div class="product-categories">
+                        <span class="category-label">🏷️</span>
+                        {% for cat in product.categories %}
+                        <span class="category-tag level-{{ cat.level }}">{{ cat.name }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                     <div class="product-meta">
                         {% if product.gueltigkeitstext %}
                         <div class="validity-info">

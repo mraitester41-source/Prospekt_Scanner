@@ -182,6 +182,19 @@ def page_detail(page_num):
                 except:
                     product['generated_images'] = []
 
+                # Kategorien für jedes Produkt laden
+                try:
+                    cat_cursor = conn.execute("""
+                        SELECT c.name, c.level
+                        FROM categories c
+                        JOIN product_categories pc ON c.id = pc.category_id
+                        WHERE pc.product_id = ?
+                        ORDER BY c.level
+                    """, (product['rowid'],))
+                    product['categories'] = [dict(cat) for cat in cat_cursor.fetchall()]
+                except:
+                    product['categories'] = []
+
             conn.close()
         except Exception as e:
             print(f"Datenbankfehler: {e}")
