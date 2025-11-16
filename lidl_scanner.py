@@ -152,6 +152,21 @@ def save_to_db(page_num, products):
         )
     ''')
 
+    # Migrationen: Spalten hinzufügen falls nicht vorhanden
+    migrations = [
+        ("kette", "ALTER TABLE angebote ADD COLUMN kette TEXT"),
+        ("katalog_id", "ALTER TABLE angebote ADD COLUMN katalog_id TEXT"),
+        ("extracted_at", "ALTER TABLE angebote ADD COLUMN extracted_at TEXT"),
+    ]
+
+    for col_name, sql in migrations:
+        try:
+            cursor.execute(sql)
+            print(f"  ℹ Migration: {col_name} Spalte zu angebote hinzugefügt")
+        except sqlite3.OperationalError:
+            # Spalte existiert bereits
+            pass
+
     # Prospekte-Tabelle
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS prospekte (
