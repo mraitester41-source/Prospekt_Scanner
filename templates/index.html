@@ -3,6 +3,10 @@
 {% block title %}Übersicht - PENNY Prospekt Scanner{% endblock %}
 
 {% block content %}
+<div style="margin-bottom: 1.5rem;">
+    <a href="/" class="button-secondary">← Zurück zur Prospekt-Auswahl</a>
+</div>
+
 {% if no_database and stats.total_products == 0 %}
 <div class="empty-state" style="background-color: #fff3cd; border: 2px solid #ffc107; margin-bottom: 2rem;">
     <h2>⚠️ Keine Produktdaten gefunden</h2>
@@ -12,15 +16,17 @@
 </div>
 {% endif %}
 
-{% if validity %}
+{% if prospekt %}
 <div class="validity-banner">
-    <div class="validity-icon">📅</div>
+    <div class="validity-icon">🛒</div>
     <div class="validity-content">
-        <h3>Prospekt-Gültigkeit</h3>
-        <p class="validity-text">{{ validity.text }}</p>
-        {% if validity.von and validity.bis %}
-        <p class="validity-dates">Von {{ validity.von }} bis {{ validity.bis }}</p>
+        <h3>{{ prospekt.kette }}{% if prospekt.kalenderwoche and prospekt.jahr %} - KW {{ prospekt.kalenderwoche }}/{{ prospekt.jahr }}{% endif %}</h3>
+        {% if prospekt.gueltigkeitstext %}
+        <p class="validity-text">{{ prospekt.gueltigkeitstext }}</p>
+        {% elif prospekt.gueltig_von and prospekt.gueltig_bis %}
+        <p class="validity-dates">Gültig von {{ prospekt.gueltig_von }} bis {{ prospekt.gueltig_bis }}</p>
         {% endif %}
+        <p style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">Katalog-ID: {{ prospekt.katalog_id }}</p>
     </div>
 </div>
 {% endif %}
@@ -47,6 +53,9 @@
         </button>
     </div>
     <form action="/search" method="get" class="search-form">
+        {% if prospekt_id %}
+        <input type="hidden" name="prospekt_id" value="{{ prospekt_id }}">
+        {% endif %}
         <input type="text" name="q" placeholder="Produktname suchen..." class="search-input">
         <button type="submit" class="search-button">Suchen</button>
     </form>
@@ -56,7 +65,7 @@
     <h2>Prospekt-Seiten</h2>
     <div class="pages-grid">
         {% for page in pages %}
-        <a href="/page/{{ page.number }}" class="page-card">
+        <a href="/page/{{ page.number }}{% if prospekt_id %}?prospekt_id={{ prospekt_id }}{% endif %}" class="page-card">
             <div class="page-image">
                 <img src="/images/{{ page.filename }}" alt="Seite {{ page.number }}" loading="lazy">
             </div>

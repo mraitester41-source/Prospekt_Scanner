@@ -50,10 +50,26 @@ def table_exists():
         return False
 
 def ensure_category_tables():
-    """Stellt sicher, dass Kategorien-Tabellen existieren"""
+    """Stellt sicher, dass Kategorien-Tabellen und Prospekte-Tabelle existieren"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        # Prospekte-Tabelle erstellen
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS prospekte (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                kette TEXT NOT NULL,
+                katalog_id TEXT NOT NULL,
+                gueltig_von TEXT,
+                gueltig_bis TEXT,
+                gueltigkeitstext TEXT,
+                kalenderwoche INTEGER,
+                jahr INTEGER,
+                gescanned_at TEXT,
+                UNIQUE(kette, katalog_id)
+            )
+        ''')
 
         # Kategorien-Tabelle erstellen
         cursor.execute('''
@@ -84,7 +100,8 @@ def ensure_category_tables():
 
             new_columns = {
                 'grundpreis_zahl': 'REAL',
-                'grundpreis_einheit': 'TEXT'
+                'grundpreis_einheit': 'TEXT',
+                'prospekt_id': 'INTEGER'
             }
 
             for col_name, col_type in new_columns.items():
@@ -138,9 +155,72 @@ def get_available_pages():
 
 @app.route('/')
 def index():
-    """Hauptseite: Übersicht aller Seiten"""
+    """Hauptseite: Prospekt-Auswahl"""
+    # Prüfe, ob Datenbank existiert
+    if not table_exists():
+        return render_template('prospekt_auswahl.html', prospekte=[], ketten=[], kalenderwochen=[], no_database=True)
+
+    try:
+        conn = get_db_connection()
+
+        # Hole alle Prospekte
+        filter_kette = request.args.get('kette')
+        filter_kw = request.args.get('kw')
+        filter_jahr = request.args.get('jahr')
+
+        query = '''
+            SELECT p.*, COUNT(a.rowid) as product_count
+            FROM prospekte p
+            LEFT JOIN angebote a ON a.prospekt_id = p.id
+            WHERE 1=1
+        '''
+        params = []
+
+        if filter_kette:
+            query += ' AND p.kette = ?'
+            params.append(filter_kette)
+
+        if filter_kw and filter_jahr:
+            query += ' AND p.kalenderwoche = ? AND p.jahr = ?'
+            params.append(int(filter_kw))
+            params.append(int(filter_jahr))
+
+        query += ' GROUP BY p.id ORDER BY p.gescanned_at DESC, p.jahr DESC, p.kalenderwoche DESC'
+
+        cursor = conn.execute(query, params)
+        prospekte = [dict(row) for row in cursor.fetchall()]
+
+        # Hole alle verfügbaren Ketten
+        cursor = conn.execute('SELECT DISTINCT kette FROM prospekte ORDER BY kette')
+        ketten = [row['kette'] for row in cursor.fetchall()]
+
+        # Hole alle verfügbaren Kalenderwochen (Jahr+KW)
+        cursor = conn.execute('''
+            SELECT DISTINCT jahr, kalenderwoche
+            FROM prospekte
+            WHERE kalenderwoche IS NOT NULL AND jahr IS NOT NULL
+            ORDER BY jahr DESC, kalenderwoche DESC
+        ''')
+        kalenderwochen = [{'jahr': row['jahr'], 'kw': row['kalenderwoche']} for row in cursor.fetchall()]
+
+        conn.close()
+
+        return render_template('prospekt_auswahl.html',
+                             prospekte=prospekte,
+                             ketten=ketten,
+                             kalenderwochen=kalenderwochen,
+                             filter_kette=filter_kette,
+                             filter_kw=filter_kw,
+                             filter_jahr=filter_jahr)
+    except Exception as e:
+        print(f"Fehler beim Laden der Prospekte: {e}")
+        return render_template('prospekt_auswahl.html', prospekte=[], ketten=[], kalenderwochen=[], error=str(e))
+
+
+@app.route('/prospekt/<int:prospekt_id>')
+def prospekt_detail(prospekt_id):
+    """Seiten-Übersicht eines Prospekts"""
     pages = get_available_pages()
-    validity = None
 
     # Prüfe, ob Datenbank existiert
     if not table_exists():
@@ -150,35 +230,30 @@ def index():
         }
         for page in pages:
             page['product_count'] = 0
-        return render_template('index.html', pages=pages, stats=stats, validity=validity, no_database=True)
+        return render_template('index.html', pages=pages, stats=stats, prospekt=None, no_database=True)
 
     # Anzahl Produkte pro Seite aus DB
     try:
         conn = get_db_connection()
 
-        # Gültigkeit laden
-        try:
-            cursor = conn.execute("SELECT * FROM prospekt_info ORDER BY id DESC LIMIT 1")
-            validity_row = cursor.fetchone()
-            if validity_row:
-                validity = {
-                    'von': validity_row['gueltig_von'],
-                    'bis': validity_row['gueltig_bis'],
-                    'text': validity_row['gueltigkeitstext']
-                }
-        except Exception:
-            validity = None
+        # Prospekt-Info laden
+        cursor = conn.execute("SELECT * FROM prospekte WHERE id = ?", (prospekt_id,))
+        prospekt_row = cursor.fetchone()
+        prospekt = dict(prospekt_row) if prospekt_row else None
 
         for page in pages:
             cursor = conn.execute(
-                "SELECT COUNT(*) as count FROM angebote WHERE seite = ?",
-                (page['number'],)
+                "SELECT COUNT(*) as count FROM angebote WHERE seite = ? AND prospekt_id = ?",
+                (page['number'], prospekt_id)
             )
             result = cursor.fetchone()
             page['product_count'] = result['count'] if result else 0
 
-        # Gesamtstatistiken
-        total_products = conn.execute("SELECT COUNT(*) as count FROM angebote").fetchone()
+        # Gesamtstatistiken für dieses Prospekt
+        total_products = conn.execute(
+            "SELECT COUNT(*) as count FROM angebote WHERE prospekt_id = ?",
+            (prospekt_id,)
+        ).fetchone()
         total_pages = len(pages)
         conn.close()
 
@@ -194,8 +269,9 @@ def index():
         }
         for page in pages:
             page['product_count'] = 0
+        prospekt = None
 
-    return render_template('index.html', pages=pages, stats=stats, validity=validity)
+    return render_template('index.html', pages=pages, stats=stats, prospekt=prospekt, prospekt_id=prospekt_id)
 
 @app.route('/page/<page_num>')
 def page_detail(page_num):
@@ -207,15 +283,33 @@ def page_detail(page_num):
     if not image_path.exists():
         return "Seite nicht gefunden", 404
 
+    # Optional: Filter nach Prospekt
+    prospekt_id = request.args.get('prospekt_id', type=int)
+
     # Produkte aus Datenbank
     products = []
+    prospekt = None
     if table_exists():
         try:
             conn = get_db_connection()
-            cursor = conn.execute(
-                "SELECT rowid, * FROM angebote WHERE seite = ? ORDER BY rowid",
-                (page_num,)
-            )
+
+            # Prospekt-Info laden falls prospekt_id gegeben
+            if prospekt_id:
+                cursor = conn.execute("SELECT * FROM prospekte WHERE id = ?", (prospekt_id,))
+                prospekt_row = cursor.fetchone()
+                prospekt = dict(prospekt_row) if prospekt_row else None
+
+            # Query anpassen je nach Filter
+            if prospekt_id:
+                cursor = conn.execute(
+                    "SELECT rowid, * FROM angebote WHERE seite = ? AND prospekt_id = ? ORDER BY rowid",
+                    (page_num, prospekt_id)
+                )
+            else:
+                cursor = conn.execute(
+                    "SELECT rowid, * FROM angebote WHERE seite = ? ORDER BY rowid",
+                    (page_num,)
+                )
             products = [dict(row) for row in cursor.fetchall()]
 
             if products:
@@ -268,18 +362,28 @@ def page_detail(page_num):
     return render_template('page_detail.html',
                           page_num=page_num,
                           image_file=image_file,
-                          products=products)
+                          products=products,
+                          prospekt=prospekt,
+                          prospekt_id=prospekt_id)
 
 @app.route('/search')
 def search():
     """Produktsuche"""
     query = request.args.get('q', '').strip()
     category_id = request.args.get('category', '').strip()
+    prospekt_id = request.args.get('prospekt_id', type=int)
 
     # Kategorien für Navigation laden
     categories_tree = []
+    prospekt = None
     try:
         conn = get_db_connection()
+
+        # Prospekt-Info laden falls prospekt_id gegeben
+        if prospekt_id:
+            cursor = conn.execute("SELECT * FROM prospekte WHERE id = ?", (prospekt_id,))
+            prospekt_row = cursor.fetchone()
+            prospekt = dict(prospekt_row) if prospekt_row else None
 
         # Alle Kategorien laden
         cursor = conn.execute("""
@@ -310,10 +414,16 @@ def search():
         if table_exists():
             try:
                 conn = get_db_connection()
-                cursor = conn.execute(
-                    "SELECT rowid, * FROM angebote WHERE name LIKE ? ORDER BY seite, rowid",
-                    (f'%{query}%',)
-                )
+                if prospekt_id:
+                    cursor = conn.execute(
+                        "SELECT rowid, * FROM angebote WHERE name LIKE ? AND prospekt_id = ? ORDER BY seite, rowid",
+                        (f'%{query}%', prospekt_id)
+                    )
+                else:
+                    cursor = conn.execute(
+                        "SELECT rowid, * FROM angebote WHERE name LIKE ? ORDER BY seite, rowid",
+                        (f'%{query}%',)
+                    )
                 products = [dict(row) for row in cursor.fetchall()]
                 conn.close()
             except Exception as e:
@@ -324,13 +434,22 @@ def search():
         if table_exists():
             try:
                 conn = get_db_connection()
-                cursor = conn.execute("""
-                    SELECT DISTINCT a.rowid, a.*
-                    FROM angebote a
-                    JOIN product_categories pc ON a.rowid = pc.product_id
-                    WHERE pc.category_id = ?
-                    ORDER BY a.grundpreis_zahl ASC, a.seite, a.rowid
-                """, (category_id,))
+                if prospekt_id:
+                    cursor = conn.execute("""
+                        SELECT DISTINCT a.rowid, a.*
+                        FROM angebote a
+                        JOIN product_categories pc ON a.rowid = pc.product_id
+                        WHERE pc.category_id = ? AND a.prospekt_id = ?
+                        ORDER BY a.grundpreis_zahl ASC, a.seite, a.rowid
+                    """, (category_id, prospekt_id))
+                else:
+                    cursor = conn.execute("""
+                        SELECT DISTINCT a.rowid, a.*
+                        FROM angebote a
+                        JOIN product_categories pc ON a.rowid = pc.product_id
+                        WHERE pc.category_id = ?
+                        ORDER BY a.grundpreis_zahl ASC, a.seite, a.rowid
+                    """, (category_id,))
                 products = [dict(row) for row in cursor.fetchall()]
 
                 # Kategorie-Name laden
@@ -348,7 +467,9 @@ def search():
                           query=query,
                           categories=categories_tree,
                           search_mode=search_mode,
-                          selected_category=category_id)
+                          selected_category=category_id,
+                          prospekt=prospekt,
+                          prospekt_id=prospekt_id)
 
 @app.route('/api/stats')
 def api_stats():

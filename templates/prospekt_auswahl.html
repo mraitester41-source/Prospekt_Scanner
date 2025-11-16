@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prospekt-Auswahl - PENNY Scanner</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Prospekt-Auswahl</h1>
+            <p>Wähle einen Prospekt aus, um die Produkte anzuzeigen</p>
+        </header>
+
+        {% if no_database %}
+        <div class="warning">
+            <p>Keine Datenbank gefunden. Bitte scanne zuerst einen Prospekt mit <code>python penny_perplexity_only.py</code></p>
+        </div>
+        {% elif error %}
+        <div class="error">
+            <p>Fehler beim Laden der Prospekte: {{ error }}</p>
+        </div>
+        {% else %}
+
+        <!-- Filter -->
+        <div class="filter-box">
+            <form method="get" action="/">
+                <div class="filter-group">
+                    <label for="kette">Kette:</label>
+                    <select name="kette" id="kette">
+                        <option value="">Alle Ketten</option>
+                        {% for k in ketten %}
+                        <option value="{{ k }}" {% if filter_kette == k %}selected{% endif %}>{{ k }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <label for="kw">Kalenderwoche:</label>
+                    <select name="kw" id="kw" onchange="updateJahr()">
+                        <option value="">Alle Wochen</option>
+                        {% for kw_data in kalenderwochen %}
+                        <option value="{{ kw_data.kw }}" data-jahr="{{ kw_data.jahr }}" {% if filter_kw == kw_data.kw|string and filter_jahr == kw_data.jahr|string %}selected{% endif %}>
+                            KW {{ kw_data.kw }}/{{ kw_data.jahr }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <input type="hidden" name="jahr" id="jahr" value="{{ filter_jahr or '' }}">
+
+                    <button type="submit">Filtern</button>
+                    <a href="/" class="button-secondary">Zurücksetzen</a>
+                </div>
+            </form>
+        </div>
+
+        <script>
+        function updateJahr() {
+            const kwSelect = document.getElementById('kw');
+            const jahrInput = document.getElementById('jahr');
+            const selectedOption = kwSelect.options[kwSelect.selectedIndex];
+            jahrInput.value = selectedOption.dataset.jahr || '';
+        }
+        </script>
+
+        <!-- Prospekt-Liste -->
+        <div class="prospekt-grid">
+            {% if prospekte %}
+                {% for p in prospekte %}
+                <div class="prospekt-card">
+                    <div class="prospekt-header">
+                        <h2>{{ p.kette }}</h2>
+                        {% if p.kalenderwoche and p.jahr %}
+                        <span class="kw-badge">KW {{ p.kalenderwoche }}/{{ p.jahr }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="prospekt-info">
+                        {% if p.gueltig_von and p.gueltig_bis %}
+                        <p class="validity">
+                            <strong>Gültig:</strong> {{ p.gueltig_von }} - {{ p.gueltig_bis }}
+                        </p>
+                        {% endif %}
+                        {% if p.gueltigkeitstext %}
+                        <p class="validity-text">{{ p.gueltigkeitstext }}</p>
+                        {% endif %}
+                        <p class="catalog-id">Katalog-ID: {{ p.katalog_id }}</p>
+                        <p class="product-count">{{ p.product_count }} Produkte</p>
+                        <p class="scan-date">Gescannt: {{ p.gescanned_at[:10] if p.gescanned_at else 'Unbekannt' }}</p>
+                    </div>
+                    <div class="prospekt-actions">
+                        <a href="/prospekt/{{ p.id }}" class="button-primary">Seiten anzeigen</a>
+                        <a href="/search?prospekt_id={{ p.id }}" class="button-secondary">Produkte durchsuchen</a>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-results">
+                    <p>Keine Prospekte gefunden.</p>
+                    {% if filter_kette or filter_kw %}
+                    <p><a href="/">Filter zurücksetzen</a></p>
+                    {% else %}
+                    <p>Scanne einen Prospekt mit <code>python penny_perplexity_only.py</code></p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+
+        {% endif %}
+    </div>
+</body>
+</html>

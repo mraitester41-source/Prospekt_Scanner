@@ -4,5 +4,6 @@
   "db_path": "penny_perplexity.sqlite",
   "csv_path": "penny_perplexity.csv",
   "replicate_api_token": "YOUR_REPLICATE_TOKEN_HERE",
-  "catalog_id": 1178966
+  "catalog_id": 1178966,
+  "kette": "PENNY"
 }

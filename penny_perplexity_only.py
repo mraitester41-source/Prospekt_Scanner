@@ -26,8 +26,10 @@ MODEL = config["model"]
 DB_PATH = config.get("db_path", "penny_perplexity.sqlite")
 CSV_PATH = config.get("csv_path", "penny_perplexity.csv")
 CATALOG_ID = config.get("catalog_id", 1178966)  # Default: newest catalog
+KETTE = config.get("kette", "PENNY")  # Default: PENNY
 
 print("PENNY PERPLEXITY ONLY – Maximale Produktabdeckung")
+print(f"Kette: {KETTE}")
 print(f"Verwende Katalog-ID: {CATALOG_ID}")
 
 # === DATENBANK MIGRATION ===
@@ -40,6 +42,22 @@ def migrate_database():
     cursor = conn.cursor()
 
     try:
+        # Prospekte-Tabelle erstellen
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS prospekte (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                kette TEXT NOT NULL,
+                katalog_id TEXT NOT NULL,
+                gueltig_von TEXT,
+                gueltig_bis TEXT,
+                gueltigkeitstext TEXT,
+                kalenderwoche INTEGER,
+                jahr INTEGER,
+                gescanned_at TEXT,
+                UNIQUE(kette, katalog_id)
+            )
+        ''')
+
         # Kategorien-Tabellen erstellen
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS categories (
@@ -78,13 +96,47 @@ def migrate_database():
             'gueltigkeitstext': 'TEXT',
             'bild_beschreibung': 'TEXT',
             'grundpreis_zahl': 'REAL',
-            'grundpreis_einheit': 'TEXT'
+            'grundpreis_einheit': 'TEXT',
+            'prospekt_id': 'INTEGER'
         }
 
         for col_name, col_type in new_columns.items():
             if col_name not in existing_columns:
                 print(f"  Migration: Füge Spalte '{col_name}' hinzu...")
                 cursor.execute(f"ALTER TABLE angebote ADD COLUMN {col_name} {col_type}")
+
+        # Migriere bestehende Daten: Erstelle Legacy-Prospekt für Produkte ohne prospekt_id
+        cursor.execute("SELECT COUNT(*) FROM angebote WHERE prospekt_id IS NULL")
+        legacy_count = cursor.fetchone()[0]
+
+        if legacy_count > 0:
+            print(f"  Migration: {legacy_count} Produkte ohne Prospekt gefunden")
+
+            # Hole Gültigkeitsdaten aus prospekt_info falls vorhanden
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='prospekt_info'")
+            if cursor.fetchone():
+                cursor.execute("SELECT gueltig_von, gueltig_bis, gueltigkeitstext FROM prospekt_info LIMIT 1")
+                info = cursor.fetchone()
+                if info:
+                    gueltig_von, gueltig_bis, gueltigkeitstext = info
+                else:
+                    gueltig_von, gueltig_bis, gueltigkeitstext = None, None, None
+            else:
+                gueltig_von, gueltig_bis, gueltigkeitstext = None, None, None
+
+            # Erstelle Legacy-Prospekt
+            cursor.execute('''
+                INSERT OR IGNORE INTO prospekte (kette, katalog_id, gueltig_von, gueltig_bis, gueltigkeitstext, gescanned_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', ('PENNY', '1178651', gueltig_von, gueltig_bis, gueltigkeitstext, datetime.now().isoformat()))
+
+            # Hole die ID des Legacy-Prospekts
+            cursor.execute("SELECT id FROM prospekte WHERE kette = 'PENNY' AND katalog_id = '1178651'")
+            legacy_id = cursor.fetchone()[0]
+
+            # Verknüpfe alle Produkte ohne prospekt_id mit dem Legacy-Prospekt
+            cursor.execute("UPDATE angebote SET prospekt_id = ? WHERE prospekt_id IS NULL", (legacy_id,))
+            print(f"  Migration: {legacy_count} Produkte mit Legacy-Prospekt verknüpft (ID: {legacy_id})")
 
         conn.commit()
         print("  ✓ Datenbank-Migration abgeschlossen")
@@ -216,8 +268,55 @@ Bild: {os.path.basename(image_path)}
         print(f"  Perplexity Fehler: {e}")
         return []
 
+# === PROSPEKT ERSTELLEN/HOLEN ===
+def get_or_create_prospekt(validity_info=None):
+    """Erstellt oder holt den Prospekt-Eintrag für den aktuellen Scan"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    # Berechne Kalenderwoche und Jahr aus gueltig_von
+    kalenderwoche = None
+    jahr = None
+    if validity_info and validity_info.get('gueltig_von'):
+        try:
+            # Format: DD.MM.YYYY
+            von_date = datetime.strptime(validity_info['gueltig_von'], '%d.%m.%Y')
+            kalenderwoche = von_date.isocalendar()[1]
+            jahr = von_date.year
+        except:
+            pass
+
+    # Prüfe ob Prospekt bereits existiert
+    cursor.execute('SELECT id FROM prospekte WHERE kette = ? AND katalog_id = ?', (KETTE, str(CATALOG_ID)))
+    row = cursor.fetchone()
+
+    if row:
+        prospekt_id = row[0]
+        print(f"  Verwende existierenden Prospekt (ID: {prospekt_id})")
+    else:
+        # Erstelle neuen Prospekt-Eintrag
+        cursor.execute('''
+            INSERT INTO prospekte (kette, katalog_id, gueltig_von, gueltig_bis, gueltigkeitstext, kalenderwoche, jahr, gescanned_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            KETTE,
+            str(CATALOG_ID),
+            validity_info.get('gueltig_von', '') if validity_info else '',
+            validity_info.get('gueltig_bis', '') if validity_info else '',
+            validity_info.get('text', '') if validity_info else '',
+            kalenderwoche,
+            jahr,
+            datetime.now().isoformat()
+        ))
+        prospekt_id = cursor.lastrowid
+        print(f"  ✓ Neuen Prospekt erstellt (ID: {prospekt_id}, Kette: {KETTE}, KW: {kalenderwoche}/{jahr})")
+
+    conn.commit()
+    conn.close()
+    return prospekt_id
+
 # === SPEICHERN: DB + CSV ===
-def save_results(results, validity_info=None):
+def save_results(results, validity_info=None, prospekt_id=None):
     if not results:
         return
     df = pd.DataFrame(results)
@@ -233,6 +332,10 @@ def save_results(results, validity_info=None):
         df['gueltig_bis'] = ''
         df['gueltigkeitstext'] = ''
 
+    # Prospekt-ID setzen
+    if prospekt_id:
+        df['prospekt_id'] = prospekt_id
+
     conn = sqlite3.connect(DB_PATH)
     df.to_sql('angebote', conn, if_exists='append', index=False)
     conn.close()
@@ -242,7 +345,7 @@ def save_results(results, validity_info=None):
     print(f"  DB + CSV aktualisiert (+{len(df)})")
 
 # === HAUPTPROZESS ===
-def process_page(page_num, validity_info=None):
+def process_page(page_num, validity_info=None, prospekt_id=None):
     url = f"https://penny-publish.blaetterkatalog.de/frontend/mvc/api/catalogs/{CATALOG_ID}/v1/normal/bk_{page_num}.jpg"
     path = f"bk_{page_num}.jpg"
 
@@ -261,7 +364,7 @@ def process_page(page_num, validity_info=None):
                 print(f"      🖼️ {desc_preview}")
                 print(f"      📏 Länge: {len(desc)} Zeichen")
 
-    save_results(products, validity_info)
+    save_results(products, validity_info, prospekt_id)
 
 # === GÜLTIGKEIT EXTRAHIEREN ===
 def extract_validity():
@@ -393,13 +496,20 @@ if __name__ == "__main__":
         print("\n⚠ Keine Gültigkeit gefunden - fahre ohne fort\n")
 
     print("="*60)
-    print("SCHRITT 3: Alle Seiten scannen")
+    print("SCHRITT 3: Prospekt-Eintrag erstellen")
     print("="*60)
 
-    # Alle Seiten scannen mit Gültigkeit
+    # Prospekt erstellen oder holen
+    prospekt_id = get_or_create_prospekt(validity_info)
+
+    print("\n" + "="*60)
+    print("SCHRITT 4: Alle Seiten scannen")
+    print("="*60)
+
+    # Alle Seiten scannen mit Gültigkeit und Prospekt-ID
     for page in range(1, 41):
         try:
-            process_page(page, validity_info)
+            process_page(page, validity_info, prospekt_id)
         except Exception as e:
             print(f"  ABBRUCH Seite {page}: {e}")
 

@@ -4,8 +4,26 @@
 
 {% block content %}
 <div class="breadcrumb">
+    {% if prospekt_id %}
+    <a href="/prospekt/{{ prospekt_id }}">← Zurück zum Prospekt</a>
+    <span> | </span>
+    <a href="/">← Prospekt-Auswahl</a>
+    {% else %}
     <a href="/">← Zurück zur Übersicht</a>
+    {% endif %}
 </div>
+
+{% if prospekt %}
+<div class="validity-banner" style="margin-bottom: 1rem;">
+    <div class="validity-icon">🛒</div>
+    <div class="validity-content">
+        <h3>{{ prospekt.kette }}{% if prospekt.kalenderwoche and prospekt.jahr %} - KW {{ prospekt.kalenderwoche }}/{{ prospekt.jahr }}{% endif %}</h3>
+        {% if prospekt.gueltigkeitstext %}
+        <p class="validity-text">{{ prospekt.gueltigkeitstext }}</p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 
 <div class="page-detail">
     <div class="page-header">
