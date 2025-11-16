@@ -792,45 +792,41 @@ PRODUKTE:
 {products_text}
 
 AUFGABE:
-1. Analysiere die Produkte und überlege welche Kategorien diese BRAUCHEN
-2. Erstelle eine sinnvolle hierarchische Struktur (max. 3 Ebenen):
-   - Ebene 1: Hauptkategorie (z.B. "Fleisch", "Milchprodukte", "Obst & Gemüse")
-   - Ebene 2: Unterkategorie (z.B. "Hähnchen", "Rind", "Schwein")
-   - Ebene 3: Spezifisch (z.B. "Hackfleisch", "Filet", "Schnitzel")
+Analysiere jeden Produkttyp und erstelle die LOGISCH RICHTIGEN Kategorien.
 
-WICHTIGE REGEL:
-→ Erstelle die Kategorien die diese Produkte WIRKLICH brauchen
-→ Für Preisvergleich müssen Kategorien präzise sein (nicht alles in "Fleisch" werfen!)
-→ Beispiel: Hähnchen, Rind, Schwein sind VERSCHIEDENE Kategorien, nicht alle nur "Fleisch"
-→ NIEMALS Produkte in falsche Kategorien zwingen nur weil diese existieren!
-{existing_cats_text}
-REGELN:
-- Kategorien müssen vergleichbar sein (gleiche Einheit: kg, 100g, Stück)
-- Deutsche Namen, präzise und eindeutig
-- KEINE Duplikate (nicht "Fleisch" UND "Fleischprodukte")
-- Erstelle sinnvolle Unterkategorien für jeden Produkttyp
-- Sei LOGISCH: Joghurt ist Milchprodukt, NICHT Süßware!
+KRITISCHE REGELN:
+1. Denke SELBST - was ist das Produkt wirklich?
+   → Joghurt = Milchprodukt (NICHT Süßware!)
+   → Äpfel = Obst (NICHT Milchprodukt!)
+   → Rinderhackfleisch = Fleisch > Rind (NICHT Hähnchen!)
 
-❌ FALSCHE Kategorisierung (NIEMALS so machen!):
-- Joghurt → Süßwaren > Pralinen & Konfekt (FALSCH! Joghurt ist Milchprodukt!)
-- Rinderhackfleisch → Fleisch > Hähnchen (FALSCH! Rind ≠ Hähnchen!)
-- Äpfel → Milchprodukte (FALSCH! Äpfel sind Obst!)
+2. Erstelle 3-stufige Hierarchie:
+   Ebene 1: Hauptkategorie (Fleisch, Milchprodukte, Obst & Gemüse)
+   Ebene 2: Unterkategorie (Hähnchen, Rind, Joghurt, Käse)
+   Ebene 3: Spezifisch (Hackfleisch, Naturjoghurt, Schnittkäse)
 
-✓ RICHTIGE Kategorisierung:
+3. IGNORIERE was bereits existiert - kategorisiere KORREKT!
+
+❌ VERBOTEN - So NICHT:
+- Joghurt → Süßwaren (NEIN! Joghurt ist Milchprodukt!)
+- Äpfel → Milchprodukte (NEIN! Äpfel sind Obst!)
+- Rinderhackfleisch → Hähnchen (NEIN! Verschiedene Tiere!)
+
+✓ SO IST RICHTIG:
 - Joghurt → Milchprodukte > Joghurt > Naturjoghurt
-- Rinderhackfleisch → Fleisch > Rind > Hackfleisch
 - Äpfel → Obst & Gemüse > Obst > Äpfel
+- Rinderhackfleisch → Fleisch > Rind > Hackfleisch
 
 BEISPIELE:
 
-Produkte: Hähnchenbrust, Hähnchenkeule
-→ Kategorien: Fleisch > Hähnchen > Hähnchenbrust / Hähnchenkeule
+Input: Hähnchenbrust, Hähnchenkeule
+Output: Fleisch > Hähnchen > Hähnchenbrust / Hähnchenkeule
 
-Produkte: Rinderhackfleisch, Schweinehackfleisch
-→ Kategorien: Fleisch > Rind > Hackfleisch UND Fleisch > Schwein > Hackfleisch
+Input: Rinderhackfleisch, Schweinehackfleisch
+Output: Fleisch > Rind > Hackfleisch UND Fleisch > Schwein > Hackfleisch
 
-Produkte: Vollmilch 3,5%, Frische Vollmilch 3,8%
-→ Kategorien: Milchprodukte > Milch > Vollmilch
+Input: Vollmilch 3,5%, Frische Vollmilch 3,8%
+Output: Milchprodukte > Milch > Vollmilch
 
 AUSGABEFORMAT (JSON):
 {{
@@ -842,8 +838,7 @@ AUSGABEFORMAT (JSON):
   "assignments": [
     {{"product": "Hähnchenbrust XXL", "categories": ["Fleisch", "Hähnchen", "Hähnchenbrust"]}}
   ]
-}}
-
+}}{existing_cats_text}
 Gib NUR das JSON zurück, keine Erklärungen."""
 
         # Perplexity API aufrufen
