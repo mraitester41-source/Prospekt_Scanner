@@ -842,6 +842,12 @@ AUSGABEFORMAT (JSON):
 
 Gib NUR das JSON zurück, keine Erklärungen."""
 
+        print("\n" + "="*80)
+        print("PROMPT AN PERPLEXITY:")
+        print("="*80)
+        print(prompt)
+        print("="*80 + "\n")
+
         # Perplexity API aufrufen
         response = requests.post(
             "https://api.perplexity.ai/chat/completions",
@@ -865,13 +871,31 @@ Gib NUR das JSON zurück, keine Erklärungen."""
         # JSON aus Antwort extrahieren
         content = result['choices'][0]['message']['content']
 
+        print("\n" + "="*80)
+        print("PERPLEXITY RAW RESPONSE:")
+        print("="*80)
+        print(content)
+        print("="*80 + "\n")
+
         # Falls Markdown-Code-Block, extrahieren
         if '```json' in content:
             content = content.split('```json')[1].split('```')[0].strip()
         elif '```' in content:
             content = content.split('```')[1].split('```')[0].strip()
 
+        print("\n" + "="*80)
+        print("EXTRACTED JSON:")
+        print("="*80)
+        print(content)
+        print("="*80 + "\n")
+
         categorization = json.loads(content)
+
+        print("\n" + "="*80)
+        print("PARSED CATEGORIZATION:")
+        print("="*80)
+        print(json.dumps(categorization, indent=2, ensure_ascii=False))
+        print("="*80 + "\n")
 
         # Kategorien in DB anlegen
         category_ids = {}
