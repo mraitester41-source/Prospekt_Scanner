@@ -805,7 +805,7 @@ KRITISCHE REGELN:
    Ebene 2: Unterkategorie (Hähnchen, Rind, Joghurt, Käse)
    Ebene 3: Spezifisch (Hackfleisch, Naturjoghurt, Schnittkäse)
 
-3. IGNORIERE was bereits existiert - kategorisiere KORREKT!
+3. Kategorisiere JEDEN Scan frisch - nutze logische, präzise Kategorien!
 
 ❌ VERBOTEN - So NICHT:
 - Joghurt → Süßwaren (NEIN! Joghurt ist Milchprodukt!)
@@ -838,7 +838,8 @@ AUSGABEFORMAT (JSON):
   "assignments": [
     {{"product": "Hähnchenbrust XXL", "categories": ["Fleisch", "Hähnchen", "Hähnchenbrust"]}}
   ]
-}}{existing_cats_text}
+}}
+
 Gib NUR das JSON zurück, keine Erklärungen."""
 
         # Perplexity API aufrufen
