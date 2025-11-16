@@ -15,49 +15,63 @@
         <button type="submit" class="search-button">Suchen</button>
     </form>
 
-    {% if categories %}
-    <div class="categories-section">
-        <h3>📂 Kategorien</h3>
-        <div class="categories-tree">
-            {% for cat in categories %}
-            <div class="category-level-1">
-                <div class="category-item">
-                    {% if cat.children %}
-                    <button class="category-toggle" onclick="toggleCategory(event, 'cat-{{ cat.id }}')">▶</button>
-                    {% else %}
-                    <span class="category-toggle-spacer"></span>
-                    {% endif %}
-                    <a href="/search?category={{ cat.id }}" class="category-link {% if selected_category|string == cat.id|string %}active{% endif %}">
-                        <span class="category-name">{{ cat.name }}</span>
-                        <span class="category-count">({{ cat.product_count }})</span>
-                    </a>
-                </div>
-                {% if cat.children %}
-                <div class="category-children" id="cat-{{ cat.id }}" style="display: none;">
-                    {% for child in cat.children %}
-                    <div class="category-level-2">
+    <div class="search-layout">
+        {% if categories %}
+        <aside class="filter-sidebar">
+            <div class="filter-header">
+                <h3>Filter</h3>
+                <button class="clear-filters" onclick="clearFilters()">✕ Zurücksetzen</button>
+            </div>
+
+            <div class="filter-section">
+                <h4>📂 Kategorien</h4>
+                <div class="categories-tree">
+                    {% for cat in categories %}
+                    <div class="category-level-1">
                         <div class="category-item">
-                            {% if child.children %}
-                            <button class="category-toggle" onclick="toggleCategory(event, 'cat-{{ child.id }}')">▶</button>
+                            {% if cat.children %}
+                            <button class="category-toggle" onclick="toggleCategory(event, 'cat-{{ cat.id }}')">▶</button>
                             {% else %}
                             <span class="category-toggle-spacer"></span>
                             {% endif %}
-                            <a href="/search?category={{ child.id }}" class="category-link {% if selected_category|string == child.id|string %}active{% endif %}">
-                                <span class="category-name">{{ child.name }}</span>
-                                <span class="category-count">({{ child.product_count }})</span>
-                            </a>
+                            <label class="category-checkbox">
+                                <input type="checkbox" name="category" value="{{ cat.id }}" onchange="applyFilters()" {% if selected_category|string == cat.id|string %}checked{% endif %}>
+                                <span class="category-name">{{ cat.name }}</span>
+                                <span class="category-count">{{ cat.product_count }}</span>
+                            </label>
                         </div>
-                        {% if child.children %}
-                        <div class="category-children" id="cat-{{ child.id }}" style="display: none;">
-                            {% for subchild in child.children %}
-                            <div class="category-level-3">
+                        {% if cat.children %}
+                        <div class="category-children" id="cat-{{ cat.id }}" style="display: none;">
+                            {% for child in cat.children %}
+                            <div class="category-level-2">
                                 <div class="category-item">
+                                    {% if child.children %}
+                                    <button class="category-toggle" onclick="toggleCategory(event, 'cat-{{ child.id }}')">▶</button>
+                                    {% else %}
                                     <span class="category-toggle-spacer"></span>
-                                    <a href="/search?category={{ subchild.id }}" class="category-link {% if selected_category|string == subchild.id|string %}active{% endif %}">
-                                        <span class="category-name">{{ subchild.name }}</span>
-                                        <span class="category-count">({{ subchild.product_count }})</span>
-                                    </a>
+                                    {% endif %}
+                                    <label class="category-checkbox">
+                                        <input type="checkbox" name="category" value="{{ child.id }}" onchange="applyFilters()" {% if selected_category|string == child.id|string %}checked{% endif %}>
+                                        <span class="category-name">{{ child.name }}</span>
+                                        <span class="category-count">{{ child.product_count }}</span>
+                                    </label>
                                 </div>
+                                {% if child.children %}
+                                <div class="category-children" id="cat-{{ child.id }}" style="display: none;">
+                                    {% for subchild in child.children %}
+                                    <div class="category-level-3">
+                                        <div class="category-item">
+                                            <span class="category-toggle-spacer"></span>
+                                            <label class="category-checkbox">
+                                                <input type="checkbox" name="category" value="{{ subchild.id }}" onchange="applyFilters()" {% if selected_category|string == subchild.id|string %}checked{% endif %}>
+                                                <span class="category-name">{{ subchild.name }}</span>
+                                                <span class="category-count">{{ subchild.product_count }}</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
                             </div>
                             {% endfor %}
                         </div>
@@ -65,12 +79,11 @@
                     </div>
                     {% endfor %}
                 </div>
-                {% endif %}
             </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
+        </aside>
+        {% endif %}
+
+        <main class="search-content">
 
     {% if query or search_mode %}
     <div class="search-results">
@@ -146,9 +159,27 @@
         {% endif %}
     </div>
     {% endif %}
+
+        </main>
+    </div>
 </div>
 
 <script>
+function applyFilters() {
+    const checkboxes = document.querySelectorAll('input[name="category"]:checked');
+    const categoryIds = Array.from(checkboxes).map(cb => cb.value);
+
+    if (categoryIds.length > 0) {
+        window.location.href = `/search?category=${categoryIds[0]}`;
+    } else {
+        window.location.href = '/search';
+    }
+}
+
+function clearFilters() {
+    window.location.href = '/search';
+}
+
 function toggleCategory(event, categoryId) {
     event.preventDefault();
     event.stopPropagation();
