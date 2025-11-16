@@ -305,8 +305,9 @@ def page_detail(page_num):
     # Produkte aus Datenbank
     products = []
     prospekt = None
-    image_file = f"bk_{page_num}.jpg"
-    image_path_for_template = image_file  # Legacy default
+    image_file = None
+    image_path = None
+    image_path_for_template = None
 
     if table_exists():
         try:
@@ -318,18 +319,34 @@ def page_detail(page_num):
                 prospekt_row = cursor.fetchone()
                 prospekt = dict(prospekt_row) if prospekt_row else None
 
-                # Bild-Pfad für dieses Prospekt
+                # Suche nach Bild in verschiedenen Formaten
                 if prospekt:
-                    image_path_for_template = f"{prospekt['kette']}/{prospekt['katalog_id']}/{image_file}"
-                    image_path = Path(f"{prospekt['kette']}/{prospekt['katalog_id']}/{image_file}")
+                    prospekt_dir = Path(f"{prospekt['kette']}/{prospekt['katalog_id']}")
+                    # Versuche verschiedene Namens-Patterns
+                    possible_files = [
+                        f"bk_{page_num}.jpg",      # PENNY Format
+                        f"page_{page_num}.jpg",    # LIDL Format (z.B. page_001.jpg)
+                    ]
+                    for filename in possible_files:
+                        test_path = prospekt_dir / filename
+                        if test_path.exists():
+                            image_file = filename
+                            image_path = test_path
+                            image_path_for_template = f"{prospekt['kette']}/{prospekt['katalog_id']}/{filename}"
+                            break
                 else:
+                    # Legacy fallback
+                    image_file = f"bk_{page_num}.jpg"
                     image_path = IMAGES_DIR / image_file
+                    image_path_for_template = image_file
             else:
                 # Legacy: Root-Verzeichnis
+                image_file = f"bk_{page_num}.jpg"
                 image_path = IMAGES_DIR / image_file
+                image_path_for_template = image_file
 
             # Prüfe ob Bild existiert
-            if not image_path.exists():
+            if not image_path or not image_path.exists():
                 conn.close()
                 return "Seite nicht gefunden", 404
 
