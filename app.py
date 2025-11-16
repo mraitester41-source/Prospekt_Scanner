@@ -148,14 +148,25 @@ def get_available_pages(prospekt=None):
     if prospekt:
         # Bilder aus Prospekt-Verzeichnis laden
         prospekt_dir = Path(f"{prospekt['kette']}/{prospekt['katalog_id']}")
-        image_files = list(prospekt_dir.glob("bk_*.jpg")) if prospekt_dir.exists() else []
+        if prospekt_dir.exists():
+            # Unterstütze verschiedene Namens-Patterns (PENNY: bk_*.jpg, LIDL: page_*.jpg)
+            image_files = list(prospekt_dir.glob("bk_*.jpg")) + list(prospekt_dir.glob("page_*.jpg"))
+        else:
+            image_files = []
     else:
         # Legacy: Bilder aus Root-Verzeichnis
         image_files = list(IMAGES_DIR.glob("bk_*.jpg"))
 
     pages = []
     for img in image_files:
-        page_num = img.stem.split('_')[1]
+        # Extrahiere Seitennummer aus verschiedenen Formaten
+        # bk_1.jpg -> 1, page_001.jpg -> 001
+        parts = img.stem.split('_')
+        if len(parts) >= 2:
+            page_num = parts[1]
+        else:
+            page_num = img.stem
+
         pages.append({
             'number': page_num,
             'filename': img.name,
