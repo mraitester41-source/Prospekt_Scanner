@@ -781,45 +781,54 @@ def categorize_page(page_num):
 
         existing_cats_text = ""
         if existing_categories:
-            existing_cats_text = "\n\nBEREITS EXISTIERENDE KATEGORIEN:\n"
+            existing_cats_text = "\n\nFalls du PASSENDE Kategorien wiederverwenden willst, hier die bestehenden:\n"
             for cat in existing_categories:
                 parent_info = f" (unter {cat['parent']})" if cat['parent'] else ""
-                existing_cats_text += f"- {cat['name']}{parent_info} [Ebene {cat['level']}]\n"
-            existing_cats_text += "\nHINWEIS: Du kannst diese Kategorien wiederverwenden wenn sie GUT passen, ABER erstelle gerne NEUE wenn nötig!\n"
+                existing_cats_text += f"- {cat['name']}{parent_info}\n"
 
         prompt = f"""Kategorisiere diese PENNY Produkte hierarchisch für einen Preisvergleich.
 
 PRODUKTE:
 {products_text}
-{existing_cats_text}
-AUFGABE:
-Erstelle eine hierarchische Kategorisierung (max. 3 Ebenen):
-- Ebene 1: Hauptkategorie (z.B. "Fleisch", "Milchprodukte", "Obst & Gemüse")
-- Ebene 2: Unterkategorie (z.B. "Hähnchen", "Rind", "Schwein")
-- Ebene 3: Spezifisch (z.B. "mit Knochen", "ohne Knochen", "Filet")
 
-WICHTIG:
-- NUTZE existierende Kategorien wenn sie GUT passen (exakt gleicher Produkttyp)
-- ERSTELLE NEUE Kategorien wenn die bestehenden nicht präzise genug sind
-- Es ist WICHTIG neue Kategorien zu erstellen für sinnvolle Preisvergleiche
+AUFGABE:
+1. Analysiere die Produkte und überlege welche Kategorien diese BRAUCHEN
+2. Erstelle eine sinnvolle hierarchische Struktur (max. 3 Ebenen):
+   - Ebene 1: Hauptkategorie (z.B. "Fleisch", "Milchprodukte", "Obst & Gemüse")
+   - Ebene 2: Unterkategorie (z.B. "Hähnchen", "Rind", "Schwein")
+   - Ebene 3: Spezifisch (z.B. "Hackfleisch", "Filet", "Schnitzel")
+
+WICHTIGE REGEL:
+→ Erstelle die Kategorien die diese Produkte WIRKLICH brauchen
+→ Für Preisvergleich müssen Kategorien präzise sein (nicht alles in "Fleisch" werfen!)
+→ Beispiel: Hähnchen, Rind, Schwein sind VERSCHIEDENE Kategorien, nicht alle nur "Fleisch"
+{existing_cats_text}
+REGELN:
 - Kategorien müssen vergleichbar sein (gleiche Einheit: kg, 100g, Stück)
 - Deutsche Namen, präzise und eindeutig
-- KEINE Duplikate wie "Fleisch" UND "Fleischprodukte" - verwende NUR EINEN Begriff!
+- KEINE Duplikate (nicht "Fleisch" UND "Fleischprodukte")
+- Erstelle sinnvolle Unterkategorien für jeden Produkttyp
 
-BEISPIEL:
-Bestehende Kategorien: "Fleisch", "Hähnchen"
-Neues Produkt: "Rindfleisch Hackfleisch gemischt"
-→ Erstelle NEUE Kategorien: "Rind", "Hackfleisch" (weil "Hähnchen" nicht passt!)
+BEISPIELE:
+
+Produkte: Hähnchenbrust, Hähnchenkeule
+→ Kategorien: Fleisch > Hähnchen > Hähnchenbrust / Hähnchenkeule
+
+Produkte: Rinderhackfleisch, Schweinehackfleisch
+→ Kategorien: Fleisch > Rind > Hackfleisch UND Fleisch > Schwein > Hackfleisch
+
+Produkte: Vollmilch 3,5%, Frische Vollmilch 3,8%
+→ Kategorien: Milchprodukte > Milch > Vollmilch
 
 AUSGABEFORMAT (JSON):
 {{
   "categories": [
     {{"name": "Fleisch", "parent": null, "level": 1}},
     {{"name": "Hähnchen", "parent": "Fleisch", "level": 2}},
-    {{"name": "Hähnchen mit Knochen", "parent": "Hähnchen", "level": 3}}
+    {{"name": "Hähnchenbrust", "parent": "Hähnchen", "level": 3}}
   ],
   "assignments": [
-    {{"product": "Hähnchenschenkel", "categories": ["Fleisch", "Hähnchen", "Hähnchen mit Knochen"]}}
+    {{"product": "Hähnchenbrust XXL", "categories": ["Fleisch", "Hähnchen", "Hähnchenbrust"]}}
   ]
 }}
 
