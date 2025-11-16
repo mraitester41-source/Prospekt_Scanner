@@ -802,12 +802,24 @@ WICHTIGE REGEL:
 → Erstelle die Kategorien die diese Produkte WIRKLICH brauchen
 → Für Preisvergleich müssen Kategorien präzise sein (nicht alles in "Fleisch" werfen!)
 → Beispiel: Hähnchen, Rind, Schwein sind VERSCHIEDENE Kategorien, nicht alle nur "Fleisch"
+→ NIEMALS Produkte in falsche Kategorien zwingen nur weil diese existieren!
 {existing_cats_text}
 REGELN:
 - Kategorien müssen vergleichbar sein (gleiche Einheit: kg, 100g, Stück)
 - Deutsche Namen, präzise und eindeutig
 - KEINE Duplikate (nicht "Fleisch" UND "Fleischprodukte")
 - Erstelle sinnvolle Unterkategorien für jeden Produkttyp
+- Sei LOGISCH: Joghurt ist Milchprodukt, NICHT Süßware!
+
+❌ FALSCHE Kategorisierung (NIEMALS so machen!):
+- Joghurt → Süßwaren > Pralinen & Konfekt (FALSCH! Joghurt ist Milchprodukt!)
+- Rinderhackfleisch → Fleisch > Hähnchen (FALSCH! Rind ≠ Hähnchen!)
+- Äpfel → Milchprodukte (FALSCH! Äpfel sind Obst!)
+
+✓ RICHTIGE Kategorisierung:
+- Joghurt → Milchprodukte > Joghurt > Naturjoghurt
+- Rinderhackfleisch → Fleisch > Rind > Hackfleisch
+- Äpfel → Obst & Gemüse > Obst > Äpfel
 
 BEISPIELE:
 
