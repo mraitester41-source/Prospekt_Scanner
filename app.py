@@ -49,6 +49,53 @@ def table_exists():
     except Exception:
         return False
 
+def ensure_category_tables():
+    """Stellt sicher, dass Kategorien-Tabellen existieren"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Kategorien-Tabelle erstellen
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                parent_id INTEGER,
+                level INTEGER DEFAULT 0,
+                FOREIGN KEY (parent_id) REFERENCES categories(id)
+            )
+        ''')
+
+        # Produkt-Kategorien Verknüpfungstabelle
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS product_categories (
+                product_id INTEGER,
+                category_id INTEGER,
+                PRIMARY KEY (product_id, category_id),
+                FOREIGN KEY (product_id) REFERENCES angebote(rowid),
+                FOREIGN KEY (category_id) REFERENCES categories(id)
+            )
+        ''')
+
+        # Fehlende Spalten in angebote-Tabelle hinzufügen
+        if table_exists():
+            cursor.execute("PRAGMA table_info(angebote)")
+            existing_columns = [row[1] for row in cursor.fetchall()]
+
+            new_columns = {
+                'grundpreis_zahl': 'REAL',
+                'grundpreis_einheit': 'TEXT'
+            }
+
+            for col_name, col_type in new_columns.items():
+                if col_name not in existing_columns:
+                    cursor.execute(f"ALTER TABLE angebote ADD COLUMN {col_name} {col_type}")
+
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Fehler beim Erstellen der Kategorien-Tabellen: {e}")
+
 def parse_grundpreis(grundpreis_str):
     """
     Extrahiert Zahl und Einheit aus Grundpreis-String
@@ -647,6 +694,13 @@ if __name__ == '__main__':
     print("=" * 60)
     print(f"Datenbank: {DB_PATH}")
     print(f"Bilder-Verzeichnis: {IMAGES_DIR}")
+
+    # Kategorien-Tabellen sicherstellen
+    if os.path.exists(DB_PATH):
+        print("Prüfe Datenbank-Schema...")
+        ensure_category_tables()
+        print("✓ Datenbank-Schema aktualisiert")
+
     print("\nÖffne in deinem Browser: http://localhost:5000")
     print("=" * 60)
     app.run(debug=True, host='0.0.0.0', port=5000)
