@@ -198,7 +198,7 @@ def index():
             params.append(int(filter_kw))
             params.append(int(filter_jahr))
 
-        query += ' GROUP BY p.id ORDER BY p.gescanned_at DESC, p.jahr DESC, p.kalenderwoche DESC'
+        query += ' GROUP BY p.id ORDER BY COALESCE(p.gescanned_at, p.created_at, p.id) DESC, p.jahr DESC, p.kalenderwoche DESC'
 
         cursor = conn.execute(query, params)
         prospekte = [dict(row) for row in cursor.fetchall()]

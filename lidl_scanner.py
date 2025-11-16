@@ -157,6 +157,7 @@ def save_to_db(page_num, products):
         ("kette", "ALTER TABLE angebote ADD COLUMN kette TEXT"),
         ("katalog_id", "ALTER TABLE angebote ADD COLUMN katalog_id TEXT"),
         ("extracted_at", "ALTER TABLE angebote ADD COLUMN extracted_at TEXT"),
+        ("prospekt_id", "ALTER TABLE angebote ADD COLUMN prospekt_id INTEGER"),
     ]
 
     for col_name, sql in migrations:
@@ -194,11 +195,17 @@ def save_to_db(page_num, products):
         VALUES (?, ?, ?)
     ''', (KETTE, CATALOG_ID, datetime.now().isoformat()))
 
+    # Hole die prospekt_id
+    cursor.execute('''
+        SELECT id FROM prospekte WHERE kette = ? AND katalog_id = ?
+    ''', (KETTE, CATALOG_ID))
+    prospekt_id = cursor.fetchone()[0]
+
     # Produkte eintragen
     for p in products:
         cursor.execute('''
-            INSERT INTO angebote (name, preis, grundpreis, app_preis, seite, kette, katalog_id, extracted_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO angebote (name, preis, grundpreis, app_preis, seite, kette, katalog_id, prospekt_id, extracted_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             p.get('name', ''),
             p.get('preis', ''),
@@ -207,6 +214,7 @@ def save_to_db(page_num, products):
             page_num,
             KETTE,
             CATALOG_ID,
+            prospekt_id,
             datetime.now().isoformat()
         ))
 
