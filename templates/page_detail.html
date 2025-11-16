@@ -8,7 +8,12 @@
 </div>
 
 <div class="page-detail">
-    <h2>Seite {{ page_num }}</h2>
+    <div class="page-header">
+        <h2>Seite {{ page_num }}</h2>
+        <button class="categorize-btn" onclick="categorizePage({{ page_num }})">
+            🏷️ Produkte kategorisieren
+        </button>
+    </div>
 
     <div class="detail-layout">
         <div class="image-column">
@@ -174,6 +179,33 @@ async function deleteProduct(productIndex, productName) {
         }
     } catch (error) {
         alert(`❌ Fehler beim Löschen: ${error.message}`);
+    }
+}
+
+async function categorizePage(pageNum) {
+    const btn = event.target;
+    const originalText = btn.textContent;
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Kategorisiere...';
+
+    try {
+        const response = await fetch(`/api/categorize-page/${pageNum}`, {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert(`✓ Kategorisierung erfolgreich!\n\n${data.message}`);
+            window.location.reload();
+        } else {
+            throw new Error(data.error || 'Unbekannter Fehler');
+        }
+    } catch (error) {
+        alert(`❌ Fehler bei Kategorisierung: ${error.message}`);
+        btn.disabled = false;
+        btn.textContent = originalText;
     }
 }
 </script>

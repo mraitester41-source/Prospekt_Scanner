@@ -38,6 +38,27 @@ def migrate_database():
     cursor = conn.cursor()
 
     try:
+        # Kategorien-Tabellen erstellen
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                parent_id INTEGER,
+                level INTEGER DEFAULT 0,
+                FOREIGN KEY (parent_id) REFERENCES categories(id)
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS product_categories (
+                product_id INTEGER,
+                category_id INTEGER,
+                PRIMARY KEY (product_id, category_id),
+                FOREIGN KEY (product_id) REFERENCES angebote(rowid),
+                FOREIGN KEY (category_id) REFERENCES categories(id)
+            )
+        ''')
+
         # Prüfe, ob angebote-Tabelle existiert
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='angebote'")
         if not cursor.fetchone():
@@ -53,7 +74,9 @@ def migrate_database():
             'gueltig_von': 'TEXT',
             'gueltig_bis': 'TEXT',
             'gueltigkeitstext': 'TEXT',
-            'bild_beschreibung': 'TEXT'
+            'bild_beschreibung': 'TEXT',
+            'grundpreis_zahl': 'REAL',
+            'grundpreis_einheit': 'TEXT'
         }
 
         for col_name, col_type in new_columns.items():

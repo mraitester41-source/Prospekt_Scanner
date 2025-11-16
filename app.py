@@ -9,6 +9,7 @@ from pathlib import Path
 import replicate
 import requests
 from datetime import datetime
+import re
 
 app = Flask(__name__)
 
@@ -47,6 +48,31 @@ def table_exists():
         return result is not None
     except Exception:
         return False
+
+def parse_grundpreis(grundpreis_str):
+    """
+    Extrahiert Zahl und Einheit aus Grundpreis-String
+    z.B. "2,99 €/kg" -> (2.99, "kg")
+         "1.49 € / 100g" -> (1.49, "100g")
+    """
+    if not grundpreis_str or grundpreis_str.strip() == '':
+        return None, None
+
+    # Entferne € und Whitespace
+    cleaned = grundpreis_str.replace('€', '').replace(' ', '')
+
+    # Suche nach Zahl (mit Komma oder Punkt) und Einheit
+    match = re.match(r'([0-9]+[,.]?[0-9]*)/(.+)', cleaned)
+    if match:
+        zahl_str = match.group(1).replace(',', '.')
+        einheit = match.group(2).strip().lower()
+        try:
+            zahl = float(zahl_str)
+            return zahl, einheit
+        except ValueError:
+            return None, None
+
+    return None, None
 
 def get_available_pages():
     """Liste aller vorhandenen Prospekt-Seiten"""
@@ -415,6 +441,173 @@ def reset_all():
 
         return jsonify({'success': True, 'message': 'Alle Daten wurden gelöscht'})
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/categorize-page/<int:page_num>', methods=['POST'])
+def categorize_page(page_num):
+    """Kategorisiert alle Produkte einer Seite mit Perplexity"""
+    try:
+        # Produkte von dieser Seite laden
+        conn = get_db_connection()
+        cursor = conn.execute(
+            "SELECT rowid, name, preis, grundpreis FROM angebote WHERE seite = ?",
+            (page_num,)
+        )
+        products = [dict(row) for row in cursor.fetchall()]
+
+        if not products:
+            conn.close()
+            return jsonify({'error': 'Keine Produkte auf dieser Seite'}), 404
+
+        # Perplexity API Key laden
+        perplexity_api_key = config.get("perplexity_api_key", "")
+        if not perplexity_api_key:
+            conn.close()
+            return jsonify({'error': 'Perplexity API Key nicht konfiguriert'}), 400
+
+        # Prompt für Perplexity erstellen
+        products_text = "\n".join([
+            f"- {p['name']} ({p['preis']}, {p['grundpreis'] or 'kein Grundpreis'})"
+            for p in products
+        ])
+
+        prompt = f"""Kategorisiere diese PENNY Produkte hierarchisch für einen Preisvergleich.
+
+PRODUKTE:
+{products_text}
+
+AUFGABE:
+Erstelle eine hierarchische Kategorisierung (max. 3 Ebenen):
+- Ebene 1: Hauptkategorie (z.B. "Fleisch", "Milchprodukte", "Obst & Gemüse")
+- Ebene 2: Unterkategorie (z.B. "Hähnchen", "Rind", "Schwein")
+- Ebene 3: Spezifisch (z.B. "mit Knochen", "ohne Knochen", "Filet")
+
+WICHTIG:
+- Kategorien müssen vergleichbar sein (gleiche Einheit: kg, 100g, Stück)
+- Nur Kategorien, die für Preisvergleich sinnvoll sind
+- Deutsche Namen, präzise und eindeutig
+
+AUSGABEFORMAT (JSON):
+{{
+  "categories": [
+    {{"name": "Fleisch", "parent": null, "level": 1}},
+    {{"name": "Hähnchen", "parent": "Fleisch", "level": 2}},
+    {{"name": "Hähnchen mit Knochen", "parent": "Hähnchen", "level": 3}}
+  ],
+  "assignments": [
+    {{"product": "Hähnchenschenkel", "categories": ["Fleisch", "Hähnchen", "Hähnchen mit Knochen"]}}
+  ]
+}}
+
+Gib NUR das JSON zurück, keine Erklärungen."""
+
+        # Perplexity API aufrufen
+        response = requests.post(
+            "https://api.perplexity.ai/chat/completions",
+            headers={
+                "Authorization": f"Bearer {perplexity_api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": config.get("model", "llama-3.1-sonar-large-128k-online"),
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 4000,
+                "temperature": 0.1
+            },
+            timeout=60
+        )
+        response.raise_for_status()
+        result = response.json()
+
+        # JSON aus Antwort extrahieren
+        content = result['choices'][0]['message']['content']
+
+        # Falls Markdown-Code-Block, extrahieren
+        if '```json' in content:
+            content = content.split('```json')[1].split('```')[0].strip()
+        elif '```' in content:
+            content = content.split('```')[1].split('```')[0].strip()
+
+        categorization = json.loads(content)
+
+        # Kategorien in DB anlegen
+        category_ids = {}
+
+        for cat in categorization['categories']:
+            cat_name = cat['name']
+            parent_name = cat.get('parent')
+            level = cat.get('level', 0)
+
+            # Parent-ID ermitteln
+            parent_id = category_ids.get(parent_name) if parent_name else None
+
+            # Kategorie anlegen (oder bestehende holen)
+            cursor.execute("SELECT id FROM categories WHERE name = ?", (cat_name,))
+            existing = cursor.fetchone()
+
+            if existing:
+                category_ids[cat_name] = existing['id']
+            else:
+                cursor.execute(
+                    "INSERT INTO categories (name, parent_id, level) VALUES (?, ?, ?)",
+                    (cat_name, parent_id, level)
+                )
+                category_ids[cat_name] = cursor.lastrowid
+
+        # Produkte verknüpfen
+        assignments_count = 0
+        for assignment in categorization.get('assignments', []):
+            product_name = assignment['product']
+            category_names = assignment['categories']
+
+            # Produkt finden (fuzzy match)
+            product_id = None
+            for p in products:
+                if product_name.lower() in p['name'].lower() or p['name'].lower() in product_name.lower():
+                    product_id = p['rowid']
+                    break
+
+            if not product_id:
+                continue
+
+            # Kategorien verknüpfen
+            for cat_name in category_names:
+                if cat_name in category_ids:
+                    try:
+                        cursor.execute(
+                            "INSERT OR IGNORE INTO product_categories (product_id, category_id) VALUES (?, ?)",
+                            (product_id, category_ids[cat_name])
+                        )
+                        assignments_count += 1
+                    except:
+                        pass
+
+        # Grundpreise parsen und aktualisieren
+        for p in products:
+            if p['grundpreis']:
+                zahl, einheit = parse_grundpreis(p['grundpreis'])
+                if zahl and einheit:
+                    cursor.execute(
+                        "UPDATE angebote SET grundpreis_zahl = ?, grundpreis_einheit = ? WHERE rowid = ?",
+                        (zahl, einheit, p['rowid'])
+                    )
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'categories_created': len(category_ids),
+            'assignments': assignments_count,
+            'message': f'{len(category_ids)} Kategorien erstellt, {assignments_count} Zuordnungen'
+        })
+
+    except Exception as e:
+        print(f"Fehler bei Kategorisierung: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
