@@ -351,15 +351,21 @@ def page_detail(page_num):
                 return "Seite nicht gefunden", 404
 
             # Query anpassen je nach Filter
+            # Konvertiere page_num zu Integer für DB-Vergleich (001 -> 1)
+            try:
+                page_num_int = int(page_num)
+            except ValueError:
+                page_num_int = page_num
+
             if prospekt_id:
                 cursor = conn.execute(
                     "SELECT rowid, * FROM angebote WHERE seite = ? AND prospekt_id = ? ORDER BY rowid",
-                    (page_num, prospekt_id)
+                    (page_num_int, prospekt_id)
                 )
             else:
                 cursor = conn.execute(
                     "SELECT rowid, * FROM angebote WHERE seite = ? ORDER BY rowid",
-                    (page_num,)
+                    (page_num_int,)
                 )
             products = [dict(row) for row in cursor.fetchall()]
 
