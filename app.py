@@ -781,11 +781,11 @@ def categorize_page(page_num):
 
         existing_cats_text = ""
         if existing_categories:
-            existing_cats_text = "\n\nBEREITS EXISTIERENDE KATEGORIEN (WIEDERVERWENDUNG ERWÜNSCHT!):\n"
+            existing_cats_text = "\n\nBEREITS EXISTIERENDE KATEGORIEN:\n"
             for cat in existing_categories:
                 parent_info = f" (unter {cat['parent']})" if cat['parent'] else ""
                 existing_cats_text += f"- {cat['name']}{parent_info} [Ebene {cat['level']}]\n"
-            existing_cats_text += "\nWICHTIG: Verwende GENAU diese Namen wenn möglich, erstelle nur NEUE Kategorien wenn absolut nötig!\n"
+            existing_cats_text += "\nHINWEIS: Du kannst diese Kategorien wiederverwenden wenn sie GUT passen, ABER erstelle gerne NEUE wenn nötig!\n"
 
         prompt = f"""Kategorisiere diese PENNY Produkte hierarchisch für einen Preisvergleich.
 
@@ -799,11 +799,17 @@ Erstelle eine hierarchische Kategorisierung (max. 3 Ebenen):
 - Ebene 3: Spezifisch (z.B. "mit Knochen", "ohne Knochen", "Filet")
 
 WICHTIG:
-- VERWENDE die bereits existierenden Kategorien wenn passend!
+- NUTZE existierende Kategorien wenn sie GUT passen (exakt gleicher Produkttyp)
+- ERSTELLE NEUE Kategorien wenn die bestehenden nicht präzise genug sind
+- Es ist WICHTIG neue Kategorien zu erstellen für sinnvolle Preisvergleiche
 - Kategorien müssen vergleichbar sein (gleiche Einheit: kg, 100g, Stück)
-- Nur Kategorien, die für Preisvergleich sinnvoll sind
 - Deutsche Namen, präzise und eindeutig
 - KEINE Duplikate wie "Fleisch" UND "Fleischprodukte" - verwende NUR EINEN Begriff!
+
+BEISPIEL:
+Bestehende Kategorien: "Fleisch", "Hähnchen"
+Neues Produkt: "Rindfleisch Hackfleisch gemischt"
+→ Erstelle NEUE Kategorien: "Rind", "Hackfleisch" (weil "Hähnchen" nicht passt!)
 
 AUSGABEFORMAT (JSON):
 {{
