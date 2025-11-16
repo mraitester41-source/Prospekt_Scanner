@@ -25,8 +25,10 @@ API_KEY = config["perplexity_api_key"]
 MODEL = config["model"]
 DB_PATH = config.get("db_path", "penny_perplexity.sqlite")
 CSV_PATH = config.get("csv_path", "penny_perplexity.csv")
+CATALOG_ID = config.get("catalog_id", 1178966)  # Default: newest catalog
 
 print("PENNY PERPLEXITY ONLY – Maximale Produktabdeckung")
+print(f"Verwende Katalog-ID: {CATALOG_ID}")
 
 # === DATENBANK MIGRATION ===
 def migrate_database():
@@ -241,7 +243,7 @@ def save_results(results, validity_info=None):
 
 # === HAUPTPROZESS ===
 def process_page(page_num, validity_info=None):
-    url = f"https://penny-publish.blaetterkatalog.de/frontend/mvc/api/catalogs/1178651/v1/normal/bk_{page_num}.jpg"
+    url = f"https://penny-publish.blaetterkatalog.de/frontend/mvc/api/catalogs/{CATALOG_ID}/v1/normal/bk_{page_num}.jpg"
     path = f"bk_{page_num}.jpg"
 
     print(f"\n=== Seite {page_num} ===")
@@ -366,7 +368,7 @@ if __name__ == "__main__":
 
     # Erst die ersten paar Seiten herunterladen (ohne zu scannen)
     for page in [1, 18, 2, 3]:
-        url = f"https://penny-publish.blaetterkatalog.de/frontend/mvc/api/catalogs/1178651/v1/normal/bk_{page}.jpg"
+        url = f"https://penny-publish.blaetterkatalog.de/frontend/mvc/api/catalogs/{CATALOG_ID}/v1/normal/bk_{page}.jpg"
         path = f"bk_{page}.jpg"
         try:
             download_image(url, path)
