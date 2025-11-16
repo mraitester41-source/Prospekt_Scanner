@@ -165,6 +165,14 @@ def save_to_db(page_num, products):
         )
     ''')
 
+    # Migration: created_at Spalte hinzufügen falls nicht vorhanden
+    try:
+        cursor.execute("ALTER TABLE prospekte ADD COLUMN created_at TEXT")
+        print("  ℹ Migration: created_at Spalte hinzugefügt")
+    except sqlite3.OperationalError:
+        # Spalte existiert bereits
+        pass
+
     # Prospekt eintragen (falls noch nicht vorhanden)
     cursor.execute('''
         INSERT OR IGNORE INTO prospekte (kette, katalog_id, created_at)
