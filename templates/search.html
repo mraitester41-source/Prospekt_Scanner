@@ -21,26 +21,43 @@
         <div class="categories-tree">
             {% for cat in categories %}
             <div class="category-level-1">
-                <a href="/search?category={{ cat.id }}" class="category-link {% if selected_category|string == cat.id|string %}active{% endif %}">
-                    <span class="category-name">{{ cat.name }}</span>
-                    <span class="category-count">({{ cat.product_count }})</span>
-                </a>
+                <div class="category-item">
+                    {% if cat.children %}
+                    <button class="category-toggle" onclick="toggleCategory(event, 'cat-{{ cat.id }}')">▶</button>
+                    {% else %}
+                    <span class="category-toggle-spacer"></span>
+                    {% endif %}
+                    <a href="/search?category={{ cat.id }}" class="category-link {% if selected_category|string == cat.id|string %}active{% endif %}">
+                        <span class="category-name">{{ cat.name }}</span>
+                        <span class="category-count">({{ cat.product_count }})</span>
+                    </a>
+                </div>
                 {% if cat.children %}
-                <div class="category-children">
+                <div class="category-children" id="cat-{{ cat.id }}" style="display: none;">
                     {% for child in cat.children %}
                     <div class="category-level-2">
-                        <a href="/search?category={{ child.id }}" class="category-link {% if selected_category|string == child.id|string %}active{% endif %}">
-                            <span class="category-name">{{ child.name }}</span>
-                            <span class="category-count">({{ child.product_count }})</span>
-                        </a>
+                        <div class="category-item">
+                            {% if child.children %}
+                            <button class="category-toggle" onclick="toggleCategory(event, 'cat-{{ child.id }}')">▶</button>
+                            {% else %}
+                            <span class="category-toggle-spacer"></span>
+                            {% endif %}
+                            <a href="/search?category={{ child.id }}" class="category-link {% if selected_category|string == child.id|string %}active{% endif %}">
+                                <span class="category-name">{{ child.name }}</span>
+                                <span class="category-count">({{ child.product_count }})</span>
+                            </a>
+                        </div>
                         {% if child.children %}
-                        <div class="category-children">
+                        <div class="category-children" id="cat-{{ child.id }}" style="display: none;">
                             {% for subchild in child.children %}
                             <div class="category-level-3">
-                                <a href="/search?category={{ subchild.id }}" class="category-link {% if selected_category|string == subchild.id|string %}active{% endif %}">
-                                    <span class="category-name">{{ subchild.name }}</span>
-                                    <span class="category-count">({{ subchild.product_count }})</span>
-                                </a>
+                                <div class="category-item">
+                                    <span class="category-toggle-spacer"></span>
+                                    <a href="/search?category={{ subchild.id }}" class="category-link {% if selected_category|string == subchild.id|string %}active{% endif %}">
+                                        <span class="category-name">{{ subchild.name }}</span>
+                                        <span class="category-count">({{ subchild.product_count }})</span>
+                                    </a>
+                                </div>
                             </div>
                             {% endfor %}
                         </div>
@@ -130,4 +147,46 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+function toggleCategory(event, categoryId) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const button = event.target;
+    const childrenDiv = document.getElementById(categoryId);
+
+    if (childrenDiv.style.display === 'none') {
+        childrenDiv.style.display = 'block';
+        button.textContent = '▼';
+    } else {
+        childrenDiv.style.display = 'none';
+        button.textContent = '▶';
+    }
+}
+
+// Beim Laden: Aktive Kategorie und alle Parents aufklappen
+document.addEventListener('DOMContentLoaded', function() {
+    const activeLink = document.querySelector('.category-link.active');
+    if (activeLink) {
+        // Gehe alle Parents hoch und klappe sie auf
+        let element = activeLink.closest('.category-children');
+        while (element) {
+            element.style.display = 'block';
+
+            // Finde den zugehörigen Toggle-Button und ändere das Symbol
+            const categoryItem = element.previousElementSibling;
+            if (categoryItem) {
+                const toggleBtn = categoryItem.querySelector('.category-toggle');
+                if (toggleBtn) {
+                    toggleBtn.textContent = '▼';
+                }
+            }
+
+            // Gehe zum nächsten Parent
+            element = element.parentElement.closest('.category-children');
+        }
+    }
+});
+</script>
 {% endblock %}
