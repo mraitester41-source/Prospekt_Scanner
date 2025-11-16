@@ -629,6 +629,109 @@ main {
     text-align: center;
 }
 
+/* Categories Section */
+.categories-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.categories-section h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+}
+
+.categories-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.category-level-1,
+.category-level-2,
+.category-level-3 {
+    display: flex;
+    flex-direction: column;
+}
+
+.category-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    text-decoration: none;
+    color: var(--text-dark);
+    background: var(--bg-light);
+    border-radius: 6px;
+    transition: all 0.2s;
+    border-left: 3px solid transparent;
+}
+
+.category-level-1 > .category-link {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.category-level-2 > .category-link {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: white;
+    font-weight: 500;
+    font-size: 0.95rem;
+    margin-left: 1.5rem;
+}
+
+.category-level-3 > .category-link {
+    background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+    color: white;
+    font-weight: 400;
+    font-size: 0.9rem;
+    margin-left: 3rem;
+}
+
+.category-link:hover {
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.category-link.active {
+    border-left-color: var(--secondary-color);
+    box-shadow: 0 4px 12px rgba(247, 213, 31, 0.4);
+}
+
+.category-name {
+    font-weight: inherit;
+}
+
+.category-count {
+    opacity: 0.8;
+    font-size: 0.85em;
+}
+
+.category-children {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.grundpreis-highlight {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: white !important;
+    font-weight: 600;
+    font-size: 1.05rem;
+    padding: 0.75rem !important;
+}
+
+.grundpreis-highlight .price-label,
+.grundpreis-highlight .price-value {
+    color: white !important;
+}
+
 /* Empty State */
 .empty-state {
     text-align: center;

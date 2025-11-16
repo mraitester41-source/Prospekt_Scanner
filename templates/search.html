@@ -11,13 +11,62 @@
     <h2>Produktsuche</h2>
 
     <form action="/search" method="get" class="search-form">
-        <input type="text" name="q" placeholder="Produktname suchen..." class="search-input" value="{{ query }}" autofocus>
+        <input type="text" name="q" placeholder="Produktname suchen..." class="search-input" value="{{ query if search_mode == 'text' else '' }}" autofocus>
         <button type="submit" class="search-button">Suchen</button>
     </form>
 
-    {% if query %}
+    {% if categories %}
+    <div class="categories-section">
+        <h3>📂 Kategorien</h3>
+        <div class="categories-tree">
+            {% for cat in categories %}
+            <div class="category-level-1">
+                <a href="/search?category={{ cat.id }}" class="category-link {% if selected_category|string == cat.id|string %}active{% endif %}">
+                    <span class="category-name">{{ cat.name }}</span>
+                    <span class="category-count">({{ cat.product_count }})</span>
+                </a>
+                {% if cat.children %}
+                <div class="category-children">
+                    {% for child in cat.children %}
+                    <div class="category-level-2">
+                        <a href="/search?category={{ child.id }}" class="category-link {% if selected_category|string == child.id|string %}active{% endif %}">
+                            <span class="category-name">{{ child.name }}</span>
+                            <span class="category-count">({{ child.product_count }})</span>
+                        </a>
+                        {% if child.children %}
+                        <div class="category-children">
+                            {% for subchild in child.children %}
+                            <div class="category-level-3">
+                                <a href="/search?category={{ subchild.id }}" class="category-link {% if selected_category|string == subchild.id|string %}active{% endif %}">
+                                    <span class="category-name">{{ subchild.name }}</span>
+                                    <span class="category-count">({{ subchild.product_count }})</span>
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if query or search_mode %}
     <div class="search-results">
-        <h3>Suchergebnisse für "{{ query }}" ({{ products|length }})</h3>
+        <h3>
+            {% if search_mode == 'category' %}
+                Kategorie: "{{ query }}" ({{ products|length }} Produkte)
+                {% if products and products[0].grundpreis_einheit %}
+                    - sortiert nach Grundpreis
+                {% endif %}
+            {% else %}
+                Suchergebnisse für "{{ query }}" ({{ products|length }})
+            {% endif %}
+        </h3>
 
         {% if products %}
         <div class="products-list">
@@ -28,6 +77,12 @@
                     <a href="/page/{{ product.seite }}" class="page-link">Seite {{ product.seite }}</a>
                 </div>
                 <div class="product-prices">
+                    {% if product.grundpreis_zahl %}
+                    <div class="price-item grundpreis-highlight">
+                        <span class="price-label">⭐ Grundpreis:</span>
+                        <span class="price-value">{{ "%.2f"|format(product.grundpreis_zahl) }} €/{{ product.grundpreis_einheit }}</span>
+                    </div>
+                    {% endif %}
                     <div class="price-item">
                         <span class="price-label">Preis:</span>
                         <span class="price-value">{{ product.preis }}</span>
@@ -38,7 +93,7 @@
                         <span class="price-value">{{ product.app_preis }}</span>
                     </div>
                     {% endif %}
-                    {% if product.grundpreis %}
+                    {% if product.grundpreis and not product.grundpreis_zahl %}
                     <div class="price-item grundpreis">
                         <span class="price-label">Grundpreis:</span>
                         <span class="price-value">{{ product.grundpreis }}</span>

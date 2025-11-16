@@ -274,25 +274,81 @@ def page_detail(page_num):
 def search():
     """Produktsuche"""
     query = request.args.get('q', '').strip()
+    category_id = request.args.get('category', '').strip()
 
-    if not query:
-        return render_template('search.html', products=[], query='')
+    # Kategorien für Navigation laden
+    categories_tree = []
+    try:
+        conn = get_db_connection()
+
+        # Alle Kategorien laden
+        cursor = conn.execute("""
+            SELECT id, name, parent_id, level,
+                   (SELECT COUNT(*) FROM product_categories WHERE category_id = categories.id) as product_count
+            FROM categories
+            ORDER BY level, name
+        """)
+        all_categories = [dict(row) for row in cursor.fetchall()]
+
+        # Hierarchische Struktur erstellen
+        for cat in all_categories:
+            if cat['level'] == 1:  # Nur Hauptkategorien
+                cat['children'] = [c for c in all_categories if c['parent_id'] == cat['id']]
+                for child in cat['children']:
+                    child['children'] = [c for c in all_categories if c['parent_id'] == child['id']]
+                categories_tree.append(cat)
+
+        conn.close()
+    except Exception as e:
+        print(f"Fehler beim Laden der Kategorien: {e}")
 
     products = []
-    if table_exists():
-        try:
-            conn = get_db_connection()
-            cursor = conn.execute(
-                "SELECT rowid, * FROM angebote WHERE name LIKE ? ORDER BY seite, rowid",
-                (f'%{query}%',)
-            )
-            products = [dict(row) for row in cursor.fetchall()]
-            conn.close()
-        except Exception as e:
-            print(f"Datenbankfehler: {e}")
-            products = []
+    search_mode = None
 
-    return render_template('search.html', products=products, query=query)
+    if query:
+        search_mode = 'text'
+        if table_exists():
+            try:
+                conn = get_db_connection()
+                cursor = conn.execute(
+                    "SELECT rowid, * FROM angebote WHERE name LIKE ? ORDER BY seite, rowid",
+                    (f'%{query}%',)
+                )
+                products = [dict(row) for row in cursor.fetchall()]
+                conn.close()
+            except Exception as e:
+                print(f"Datenbankfehler: {e}")
+
+    elif category_id:
+        search_mode = 'category'
+        if table_exists():
+            try:
+                conn = get_db_connection()
+                cursor = conn.execute("""
+                    SELECT DISTINCT a.rowid, a.*
+                    FROM angebote a
+                    JOIN product_categories pc ON a.rowid = pc.product_id
+                    WHERE pc.category_id = ?
+                    ORDER BY a.grundpreis_zahl ASC, a.seite, a.rowid
+                """, (category_id,))
+                products = [dict(row) for row in cursor.fetchall()]
+
+                # Kategorie-Name laden
+                cat_cursor = conn.execute("SELECT name FROM categories WHERE id = ?", (category_id,))
+                cat_row = cat_cursor.fetchone()
+                if cat_row:
+                    query = cat_row['name']
+
+                conn.close()
+            except Exception as e:
+                print(f"Datenbankfehler: {e}")
+
+    return render_template('search.html',
+                          products=products,
+                          query=query,
+                          categories=categories_tree,
+                          search_mode=search_mode,
+                          selected_category=category_id)
 
 @app.route('/api/stats')
 def api_stats():
@@ -543,17 +599,48 @@ def categorize_page(page_num):
             conn.close()
             return jsonify({'error': 'Perplexity API Key nicht konfiguriert'}), 400
 
+        # Bestehende Kategorien laden
+        existing_categories = []
+        try:
+            cat_cursor = conn.execute("""
+                SELECT name, parent_id, level
+                FROM categories
+                ORDER BY level, name
+            """)
+            for cat in cat_cursor.fetchall():
+                parent_name = None
+                if cat['parent_id']:
+                    parent_cursor = conn.execute("SELECT name FROM categories WHERE id = ?", (cat['parent_id'],))
+                    parent_row = parent_cursor.fetchone()
+                    if parent_row:
+                        parent_name = parent_row['name']
+                existing_categories.append({
+                    'name': cat['name'],
+                    'parent': parent_name,
+                    'level': cat['level']
+                })
+        except:
+            pass
+
         # Prompt für Perplexity erstellen
         products_text = "\n".join([
             f"- {p['name']} ({p['preis']}, {p['grundpreis'] or 'kein Grundpreis'})"
             for p in products
         ])
 
+        existing_cats_text = ""
+        if existing_categories:
+            existing_cats_text = "\n\nBEREITS EXISTIERENDE KATEGORIEN (WIEDERVERWENDUNG ERWÜNSCHT!):\n"
+            for cat in existing_categories:
+                parent_info = f" (unter {cat['parent']})" if cat['parent'] else ""
+                existing_cats_text += f"- {cat['name']}{parent_info} [Ebene {cat['level']}]\n"
+            existing_cats_text += "\nWICHTIG: Verwende GENAU diese Namen wenn möglich, erstelle nur NEUE Kategorien wenn absolut nötig!\n"
+
         prompt = f"""Kategorisiere diese PENNY Produkte hierarchisch für einen Preisvergleich.
 
 PRODUKTE:
 {products_text}
-
+{existing_cats_text}
 AUFGABE:
 Erstelle eine hierarchische Kategorisierung (max. 3 Ebenen):
 - Ebene 1: Hauptkategorie (z.B. "Fleisch", "Milchprodukte", "Obst & Gemüse")
@@ -561,9 +648,11 @@ Erstelle eine hierarchische Kategorisierung (max. 3 Ebenen):
 - Ebene 3: Spezifisch (z.B. "mit Knochen", "ohne Knochen", "Filet")
 
 WICHTIG:
+- VERWENDE die bereits existierenden Kategorien wenn passend!
 - Kategorien müssen vergleichbar sein (gleiche Einheit: kg, 100g, Stück)
 - Nur Kategorien, die für Preisvergleich sinnvoll sind
 - Deutsche Namen, präzise und eindeutig
+- KEINE Duplikate wie "Fleisch" UND "Fleischprodukte" - verwende NUR EINEN Begriff!
 
 AUSGABEFORMAT (JSON):
 {{
